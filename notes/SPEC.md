@@ -40,7 +40,7 @@ Aucune intégration avec Paperclip : les deux démarches restent indépendantes,
 
 ## Décisions
 
-Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour, rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre »).
+Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté deux, toujours le 16 octobre. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre »).
 
 | Sujet | Décision | Conséquence |
 | --- | --- | --- |
@@ -70,6 +70,8 @@ Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus stru
 | Fichier de sensibilité dans l'export (16 octobre) | Jamais exporté, quel que soit le plafond | L'enfant ne voit ni les zones exclues ni leurs étiquettes |
 | Transcriptions de Claude Code (16 octobre) | Conservées sur le poste, comme une session ordinaire | Elles restent dans `~/.claude/projects/` ; QRG garde l'identifiant de session pour `resume` |
 | Motifs de sensibilité (16 octobre) | `**` sur un segment entier ; `[`, `]`, `{`, `}` et `\` refusés | Un motif refusé ferme par défaut : tout le dépôt passe en C3 |
+| Clé de la gateway (16 octobre) | Clé dédiée à QRG, limitée aux routes du lot 1 si la gateway le permet, avec plafond et date d'expiration ; l'ancienne clé est révoquée une fois la nouvelle rangée | Rangée hors de toute session Claude dans le fichier d'identifiants de DSH, sous la référence `LINAGORA_API_KEY` (`notes/acces-lot1.md`) ; les autres outils du poste reçoivent leur propre clé |
+| Lecture du fichier d'identifiants (16 octobre) | Interdite à toute session Claude Code du poste : règles `deny` sur `Read` et `Edit`, hook qui refuse les commandes qui nomment le fichier ou le dossier de DSH, s'y étendent par motif ou fouillent récursivement un dossier parent | Le hook bloque les accès directs ; un script qui lit le fichier reste un détour possible |
 
 **Contraintes liées aux abonnements individuels** ([conditions Anthropic](https://code.claude.com/docs/en/legal-and-compliance))
 
@@ -318,7 +320,7 @@ Chaque décision, délégation et question à l'utilisateur produit une trace Op
 - Le profil coupe tous les flux par défaut vers DeepSeek (décision du 16 octobre 2026) : télémétrie vers `dsh-otel-collector.deepseeksvc.com`, champs `dsh_session_log` (tout le journal de la session, jusqu'à 8 Mio par requête) et `dsh_plugin_packages`, routes officielles `llm-deepseek` et `llm-deepseek-account`, recherche web par `deepseek-official`. Ces lignes sont désactivées dans le patch du profil, qui s'applique même quand un bundle est sauté ; `qrg-router` refuse de déléguer et alerte si l'une d'elles est réactivée.
 - Le modèle de tête est hébergé par LINAGORA et revérifié à chaque requête de la racine (waterfall `agent/request`) ; toute autre route est refusée et tracée.
 - La classe de sensibilité et le filtre du texte de tâche sont vérifiés avant toute sortie vers un modèle externe ; un refus est tracé.
-- Claude Code utilise l'abonnement de chaque développeur ; le plugin ne touche jamais ces identifiants. Les clés de la gateway et de Jev sont injectées par un courtier de secrets, CredOS si possible, jamais en clair dans les profils : la configuration DSH ne porte que des noms de variables, résolus à chaque requête par le service `credentials`.
+- Claude Code utilise l'abonnement de chaque développeur ; le plugin ne touche jamais ces identifiants. Les clés de la gateway et de Jev ne sont jamais en clair dans les profils : la configuration DSH ne porte que des noms de références (`apiKeyEnv`), résolus à chaque requête par le service `credentials`. Au lot 1, la clé de la gateway, dédiée à QRG, est rangée dans le fichier d'identifiants de DSH (`$DSH_HOME/.credentials.yaml`, droits 600 exigés au démarrage) sous la référence `LINAGORA_API_KEY`, par une étape faite hors de toute session Claude (`notes/acces-lot1.md`) ; sur le poste, des règles `deny` de Claude Code et un hook refusent qu'une session lise ce fichier (décision du 16 octobre 2026). Un courtier de secrets, CredOS si possible, pourra remplacer ce fichier aux lots suivants.
 - Le journal de session append-only de DSH n'est une piste d'audit que pour les événements DSH ; les décisions QRG vivent dans le stockage QRG et dans les traces, avec un miroir expérimental dans le journal.
 
 ## Résultats de l'étude (premier passage du lot 0)
@@ -556,7 +558,7 @@ Mesures suivies :
 - [x] Prototype du SDK 0.3.263, démonstration du lot 0 : authentification par abonnement dans un environnement expurgé, `AskUserQuestion` via `canUseTool` avec une réponse rendue à 75 s, `resume` et emplacement des sessions persistées, plugin passé explicitement sans `settingSources`.
 - [x] Note de décision du lot 0 (`notes/lot0-note-de-decision.md`) : validée le 16 octobre 2026, sans réserve.
 - [x] Création de `linagora/qrg` sur GitHub : dépôt privé créé le 16 octobre 2026, qui porte `notes/` ; le prototype du lot 0 est sur la branche `prototype/lot0-demo`.
-- [ ] Accès pour le lot 1 : seule l'AI Gateway est disponible au 16 octobre 2026. Aucun Langfuse ni Grafana auto-hébergé ne peut encore recevoir les traces ; la cible est à choisir et à mettre en place au début du lot 1, avec l'injection des identifiants de la gateway.
+- [ ] Accès pour le lot 1 : seule l'AI Gateway est disponible au 16 octobre 2026. Gateway : clé dédiée à QRG, à ranger hors de toute session Claude dans le fichier d'identifiants de DSH sous la référence `LINAGORA_API_KEY`, par l'étape guidée de `notes/acces-lot1.md`, qui note aussi l'adresse et les routes (décision du 16 octobre 2026). Traces : aucun Langfuse ni Grafana auto-hébergé ne peut encore les recevoir ; la cible est à choisir et à mettre en place au début du lot 1.
 - [ ] Prototype du SDK au lot 2, pour ce qui reste : serveur MCP dans le processus, hook `defer`, usage du message de résultat.
 - [ ] Commandes Bash admises par `dontAsk` dans l'export : à vérifier au lot 1, pour savoir si Claude Code peut y lancer des tests.
 - [ ] Carte de question posée dans le tour de la racine : persistance au redémarrage à vérifier.
