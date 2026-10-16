@@ -40,7 +40,7 @@ Aucune intégration avec Paperclip : les deux démarches restent indépendantes,
 
 ## Décisions
 
-Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté deux, toujours le 16 octobre. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre »).
+Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté trois, toujours le 16 octobre. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre »).
 
 | Sujet | Décision | Conséquence |
 | --- | --- | --- |
@@ -72,6 +72,7 @@ Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus stru
 | Motifs de sensibilité (16 octobre) | `**` sur un segment entier ; `[`, `]`, `{`, `}` et `\` refusés | Un motif refusé ferme par défaut : tout le dépôt passe en C3 |
 | Clé de la gateway (16 octobre) | Clé dédiée à QRG, limitée aux routes du lot 1 si la gateway le permet, avec plafond et date d'expiration ; l'ancienne clé est révoquée une fois la nouvelle rangée | Rangée hors de toute session Claude dans le fichier d'identifiants de DSH, sous la référence `LINAGORA_API_KEY` (`notes/acces-lot1.md`) ; les autres outils du poste reçoivent leur propre clé |
 | Lecture du fichier d'identifiants (16 octobre) | Interdite à toute session Claude Code du poste : règles `deny` sur `Read` et `Edit`, hook qui refuse les commandes qui nomment le fichier ou le dossier de DSH, s'y étendent par motif ou fouillent récursivement un dossier parent | Le hook bloque les accès directs ; un script qui lit le fichier reste un détour possible |
+| Cible des traces (16 octobre) | Langfuse auto-hébergé derrière un collecteur OpenTelemetry LINAGORA ; la décision nomme la v3, version à confirmer (questions ouvertes) | Le poste n'exporte qu'en OTLP/HTTP vers le collecteur, avec un simple jeton d'écriture ; la paire de clés Langfuse reste sur le collecteur, qui filtre le contenu et peut changer de cible sans toucher QRG |
 
 **Contraintes liées aux abonnements individuels** ([conditions Anthropic](https://code.claude.com/docs/en/legal-and-compliance))
 
@@ -306,7 +307,7 @@ Avec des abonnements individuels, les tokens n'ont pas de prix unitaire pour l'u
 
 ## Observabilité, sécurité et permissions
 
-Chaque décision, délégation et question à l'utilisateur produit une trace OpenTelemetry, exportée vers un Langfuse ou une stack Grafana auto-hébergés. DSH n'émet aucune trace (son paquet OTel n'embarque que le SDK de logs) : QRG apporte traceur et exportateur, et mesure lui-même durée et tokens de délégation.
+Chaque décision, délégation et question à l'utilisateur produit une trace OpenTelemetry, exportée en OTLP/HTTP vers un collecteur OpenTelemetry LINAGORA qui la relaie à un Langfuse auto-hébergé (décision du 16 octobre 2026, `notes/acces-lot1.md`). DSH n'émet aucune trace (son paquet OTel n'embarque que le SDK de logs) : QRG apporte traceur et exportateur, et mesure lui-même durée et tokens de délégation.
 
 - **Span de décision** : fournisseur utilisé, règle déclenchée, agent, modèle, confiance, forçage éventuel.
 - **Span de délégation** : session enfant, durée, tokens, coût par route de la gateway, issue.
@@ -558,7 +559,8 @@ Mesures suivies :
 - [x] Prototype du SDK 0.3.263, démonstration du lot 0 : authentification par abonnement dans un environnement expurgé, `AskUserQuestion` via `canUseTool` avec une réponse rendue à 75 s, `resume` et emplacement des sessions persistées, plugin passé explicitement sans `settingSources`.
 - [x] Note de décision du lot 0 (`notes/lot0-note-de-decision.md`) : validée le 16 octobre 2026, sans réserve.
 - [x] Création de `linagora/qrg` sur GitHub : dépôt privé créé le 16 octobre 2026, qui porte `notes/` ; le prototype du lot 0 est sur la branche `prototype/lot0-demo`.
-- [ ] Accès pour le lot 1 : seule l'AI Gateway est disponible au 16 octobre 2026. Gateway : clé dédiée à QRG, à ranger hors de toute session Claude dans le fichier d'identifiants de DSH sous la référence `LINAGORA_API_KEY`, par l'étape guidée de `notes/acces-lot1.md`, qui note aussi l'adresse et les routes (décision du 16 octobre 2026). Traces : aucun Langfuse ni Grafana auto-hébergé ne peut encore les recevoir ; la cible est à choisir et à mettre en place au début du lot 1.
+- [ ] Accès pour le lot 1 : seule l'AI Gateway est disponible au 16 octobre 2026. Gateway : clé dédiée à QRG, à ranger hors de toute session Claude dans le fichier d'identifiants de DSH sous la référence `LINAGORA_API_KEY`, par l'étape guidée de `notes/acces-lot1.md`, qui note aussi l'adresse et les routes (décision du 16 octobre 2026). Traces : Langfuse auto-hébergé derrière un collecteur OpenTelemetry LINAGORA (décision du 16 octobre 2026), à monter sur l'infrastructure LINAGORA ; hébergement, opérateur et noms DNS à fixer, puis adresse OTLP à noter dans `notes/acces-lot1.md`.
+- [ ] Version de Langfuse : la décision du 16 octobre nomme la v3, mais la v4 est sortie le 17 août 2026 et la v3 ne reçoit plus que des correctifs de sécurité jusqu'en janvier 2027. L'architecture ne change pas ; la v4 demande Postgres 15 et ClickHouse 25.12 au lieu de 12 et 24.3. À trancher avant le montage.
 - [ ] Prototype du SDK au lot 2, pour ce qui reste : serveur MCP dans le processus, hook `defer`, usage du message de résultat.
 - [ ] Commandes Bash admises par `dontAsk` dans l'export : à vérifier au lot 1, pour savoir si Claude Code peut y lancer des tests.
 - [ ] Carte de question posée dans le tour de la racine : persistance au redémarrage à vérifier.

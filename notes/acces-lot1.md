@@ -76,4 +76,42 @@ Ces couches bloquent les accès directs. Un script qui construit le chemin à l'
 
 ## Traces
 
-La cible des traces est choisie et montée par le ticket #2 ; son adresse OTLP et le rangement de ses identifiants d'export seront notés ici.
+Décision du 16 octobre 2026 : Langfuse auto-hébergé derrière un collecteur OpenTelemetry LINAGORA. Le poste n'exporte qu'en OTLP/HTTP vers le collecteur, authentifié par un jeton d'écriture ; seul le collecteur détient la paire de clés du projet Langfuse. Il peut filtrer le contenu avant stockage et changer de cible sans toucher QRG.
+
+| Élément | Valeur |
+| --- | --- |
+| Adresse OTLP du collecteur | à compléter |
+| Jeton d'écriture du poste | à ranger hors du dépôt, de préférence dans le fichier d'identifiants de DSH comme la clé de la gateway ; mode de lecture à fixer avec `qrg-otel` |
+| Langfuse | hébergement, nom DNS et version à fixer |
+
+### Langfuse
+
+Faits relevés le 16 octobre 2026 dans la documentation de Langfuse, qui décrit la v4 :
+
+- Langfuse reçoit les traces OTLP sur `/api/public/otel` (traces sur `/api/public/otel/v1/traces`), en HTTP/protobuf ou HTTP/JSON, pas en gRPC, avec une authentification Basic par la paire de clés du projet. L'auto-hébergé le permet depuis la v3.22.0 ; d'après le code de la v3.225.12, une v3 récente lit aussi le JSON et le gzip.
+- Une instance comprend deux conteneurs (web et worker), Postgres, ClickHouse, Redis ou Valkey (version 7 au moins, avec `maxmemory-policy=noeviction`) et un stockage compatible S3. La v3 demande au moins Postgres 12 et ClickHouse 24.3, la v4 Postgres 15 et ClickHouse 25.12, à architecture égale.
+- En production, Langfuse documente Kubernetes par son chart Helm et des modules Terraform pour AWS, Azure et GCP ; Docker Compose sert à l'usage local et aux tests, sans haute disponibilité ni sauvegarde.
+- La v4 est sortie le 17 août 2026 ; la v3 reçoit des correctifs de sécurité jusqu'en janvier 2027.
+- Le masquage côté serveur demande une licence Enterprise : le filtrage du contenu se fait donc dans le collecteur.
+
+### Collecteur
+
+- Distribution contrib (ou k8s) d'OpenTelemetry Collector : c'est elle qui embarque l'extension `bearertokenauth` et les processeurs `transform` et `redaction`.
+- Réception : récepteur `otlp` en HTTP, sous TLS, avec `auth.authenticator` sur `bearertokenauth`, qui sait aussi valider les requêtes entrantes (stabilité bêta).
+- Filtrage : `filter` abandonne des spans entiers, `attributes` supprime ou hache des attributs, `transform` (OTTL) atteint aussi les événements de span, où des prompts peuvent se trouver, et `redaction` supprime tout attribut absent de sa liste autorisée, `langfuse.*` et `gen_ai.*` compris.
+- Export vers Langfuse, d'après l'exemple de sa documentation, où `AUTH_STRING` vaut l'encodage base64 de `<clé publique>:<clé secrète>` et reste dans l'environnement du collecteur :
+
+```yaml
+exporters:
+  otlp_http/langfuse:
+    endpoint: https://<langfuse>/api/public/otel
+    headers:
+      Authorization: "Basic ${AUTH_STRING}"
+      x-langfuse-ingestion-version: "4"
+```
+
+L'exportateur ajoute lui-même `/v1/traces`. Son ancien nom `otlphttp`, celui de la documentation de Langfuse, reste admis comme alias déprécié. Sans l'en-tête `x-langfuse-ingestion-version`, la documentation v4 annonce jusqu'à 10 minutes de délai d'ingestion ; son effet sur une v3 n'est pas documenté.
+
+### Double comptage des tokens
+
+D'après un mainteneur (langfuse/langfuse#7549), Langfuse additionne l'usage de toutes les générations d'une trace. Le ticket loongsuite/dsh-plugin#3, ouvert le 16 août 2026, signale que le span d'agent porte la somme de ses enfants LLM, ce qui double le total de la trace. Langfuse 3.206.0 ignore l'usage des spans dont `gen_ai.operation.name` vaut `invoke_agent` ou `agent_step` (langfuse/langfuse#14808). La base de `qrg-otel` ouvre son span d'agent par `startInvokeAgent` (`src/coordinator.ts:356` à `f44ccfc`), et `@loongsuite/otel-util-genai` 0.1.1 pose `invoke_agent` sur ce span à sa clôture. Hypothèse à vérifier sur une trace réelle dans un ticket de suite : sur une version récente de Langfuse, le total de la trace n'est plus doublé.
