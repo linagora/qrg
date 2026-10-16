@@ -555,7 +555,7 @@ Mesures suivies :
 - [x] Motifs de sensibilité : `**` sur un segment entier ; `[`, `]`, `{`, `}` et `\` refusés.
 - [x] Prototype du SDK 0.3.263, démonstration du lot 0 : authentification par abonnement dans un environnement expurgé, `AskUserQuestion` via `canUseTool` avec une réponse rendue à 75 s, `resume` et emplacement des sessions persistées, plugin passé explicitement sans `settingSources`.
 - [x] Note de décision du lot 0 (`notes/lot0-note-de-decision.md`) : validée le 16 octobre 2026, sans réserve.
-- [ ] Création de `linagora/qrg` sur GitHub : sur accord explicite.
+- [x] Création de `linagora/qrg` sur GitHub : dépôt privé créé le 16 octobre 2026, qui porte `notes/` ; le prototype du lot 0 est sur la branche `prototype/lot0-demo`.
 - [ ] Accès pour le lot 1 : seule l'AI Gateway est disponible au 16 octobre 2026. Aucun Langfuse ni Grafana auto-hébergé ne peut encore recevoir les traces ; la cible est à choisir et à mettre en place au début du lot 1, avec l'injection des identifiants de la gateway.
 - [ ] Prototype du SDK au lot 2, pour ce qui reste : serveur MCP dans le processus, hook `defer`, usage du message de résultat.
 - [ ] Commandes Bash admises par `dontAsk` dans l'export : à vérifier au lot 1, pour savoir si Claude Code peut y lancer des tests.
