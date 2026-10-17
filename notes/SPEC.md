@@ -64,7 +64,7 @@ Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus stru
 | Reprise de Claude Code (16 octobre) | Nouvelle exécution du fork avec `resume`, portée par QRG | Pas de LLM relais ; comportement du SDK à prouver par un prototype au lot 2 |
 | Clé API factice (16 octobre) | Admise dans les seuls tests automatisés, confinée au processus enfant et pointée sur un faux serveur local | Seule exception à l'absence de clé API |
 | Profils et bundles (16 octobre) | Même régime que les plugins : revue, gel sur SHA, empreinte vérifiée | `!!js` limité à la lecture de `process.env` dans les patchs QRG |
-| Dépôts (16 octobre) | Monorepo `linagora/qrg` en workspace pnpm, AGPL-3.0 ; les forks gardent leur licence (MIT pour `qrg-claude-code`, Apache-2.0 pour `qrg-otel`) | Création sur GitHub après accord explicite |
+| Dépôts (16 octobre) | Monorepo `linagora/qrg` en workspace pnpm, sous `AGPL-3.0-only` (identifiant précisé le 17 octobre) ; les forks gardent leur licence (MIT pour `qrg-claude-code`, Apache-2.0 pour `qrg-otel`) | Création sur GitHub après accord explicite |
 | Version de DSH (16 octobre) | 0.2.1-alpha.4, épinglée exactement | Job CI qui rejoue la suite QRG contre chaque nouvelle alpha ; montée toujours explicite, avec `engines.dsh` relevé dans le même changement |
 | Héritage du poste par Claude Code (16 octobre) | Aucun : `settingSources: []`, `strictMcpConfig: true`, plugins revus passés par l'option `plugins` | Fork minimal dès le lot 1, le fournisseur officiel chargeant les plugins, les hooks et les connecteurs claude.ai du développeur |
 | Fichier de sensibilité dans l'export (16 octobre) | Jamais exporté, quel que soit le plafond | L'enfant ne voit ni les zones exclues ni leurs étiquettes |
@@ -552,7 +552,7 @@ Mesures suivies :
 - [x] Reprise de Claude Code : nouvelle exécution du fork avec `resume`, portée par QRG.
 - [x] Clé API factice : admise dans les seuls tests automatisés, confinée au processus enfant.
 - [x] Profils et bundles : même régime que les plugins.
-- [x] Dépôts : monorepo `linagora/qrg`, AGPL-3.0, forks sous leur licence d'origine.
+- [x] Dépôts : monorepo `linagora/qrg`, `AGPL-3.0-only` (identifiant précisé le 17 octobre 2026), forks sous leur licence d'origine.
 - [x] Version de DSH : 0.2.1-alpha.4, épinglée exactement.
 - [x] Héritage du poste par Claude Code : aucun, plugins revus passés explicitement ; fork minimal dès le lot 1.
 - [x] Fichier de sensibilité : jamais exporté.
