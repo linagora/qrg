@@ -76,13 +76,15 @@ Ces couches bloquent les accès directs. Un script qui construit le chemin à l'
 
 ## Traces
 
-Décision du 16 octobre 2026 : Langfuse auto-hébergé derrière un collecteur OpenTelemetry LINAGORA. Le poste n'exporte qu'en OTLP/HTTP vers le collecteur, authentifié par un jeton d'écriture ; seul le collecteur détient la paire de clés du projet Langfuse. Il peut filtrer le contenu avant stockage et changer de cible sans toucher QRG.
+Décisions des 16 et 17 octobre 2026 : Langfuse v4 auto-hébergé sur un cluster Kubernetes LINAGORA par son chart Helm officiel, derrière un collecteur OpenTelemetry LINAGORA monté sur le même cluster, et des traces réduites aux métadonnées. Le poste n'exporte qu'en OTLP/HTTP vers le collecteur, authentifié par un jeton d'écriture ; seul le collecteur détient la paire de clés du projet Langfuse. Il peut filtrer le contenu avant stockage et changer de cible sans toucher QRG.
 
 | Élément | Valeur |
 | --- | --- |
 | Adresse OTLP du collecteur | à compléter |
-| Jeton d'écriture du poste | à ranger hors du dépôt, de préférence dans le fichier d'identifiants de DSH comme la clé de la gateway ; mode de lecture à fixer avec `qrg-otel` |
-| Langfuse | hébergement, nom DNS et version à fixer |
+| Jeton d'écriture du poste | à ranger dans le fichier d'identifiants de DSH, comme la clé de la gateway ; `qrg-otel` résout ses en-têtes d'export par le service `credentials` (#9) |
+| Langfuse | v4 par le chart Helm officiel ; cluster, exploitant et nom DNS à fixer |
+
+Les valeurs du chart et la configuration du collecteur, sans aucun secret, arrivent par une PR à part sous `deploy/observability/`.
 
 ### Langfuse
 
@@ -91,8 +93,12 @@ Faits relevés le 16 octobre 2026 dans la documentation de Langfuse, qui décrit
 - Langfuse reçoit les traces OTLP sur `/api/public/otel` (traces sur `/api/public/otel/v1/traces`), en HTTP/protobuf ou HTTP/JSON, pas en gRPC, avec une authentification Basic par la paire de clés du projet. L'auto-hébergé le permet depuis la v3.22.0 ; d'après le code de la v3.225.12, une v3 récente lit aussi le JSON et le gzip.
 - Une instance comprend deux conteneurs (web et worker), Postgres, ClickHouse, Redis ou Valkey (version 7 au moins, avec `maxmemory-policy=noeviction`) et un stockage compatible S3. La v3 demande au moins Postgres 12 et ClickHouse 24.3, la v4 Postgres 15 et ClickHouse 25.12, à architecture égale.
 - En production, Langfuse documente Kubernetes par son chart Helm et des modules Terraform pour AWS, Azure et GCP ; Docker Compose sert à l'usage local et aux tests, sans haute disponibilité ni sauvegarde.
-- La v4 est sortie le 17 août 2026 ; la v3 reçoit des correctifs de sécurité jusqu'en janvier 2027.
+- La v4 est sortie le 17 août 2026 ; la v3 reçoit des correctifs de sécurité jusqu'en janvier 2027. La v4 est retenue (décision du 17 octobre 2026).
 - Le masquage côté serveur demande une licence Enterprise : le filtrage du contenu se fait donc dans le collecteur.
+
+### Contenu des traces
+
+Décision du 17 octobre 2026 : les traces ne portent que des métadonnées (décision, délégation, modèle, tokens, durée, issue), jamais de prompt, de complétion ni de contenu de fichier, de question ou d'outil. Deux barrières s'empilent. `qrg-otel` force la capture du contenu à faux (#9). Le collecteur abandonne ensuite tous les événements de span, ne garde que les attributs de span d'une liste autorisée et réduit les attributs de ressource à une liste fixe. La liste autorisée suivra les attributs que fixera #20 ; d'ici là, tout attribut qui n'y figure pas est supprimé.
 
 ### Collecteur
 
