@@ -1,0 +1,196 @@
+# Valeurs du chart open-telemetry/opentelemetry-collector 0.175.1
+# (OpenTelemetry Collector contrib 0.161.0) pour le lot 1 de QRG.
+#
+# Release `qrg-otel-collector` dans le namespace `langfuse`, à côté de Langfuse.
+# Le collecteur reçoit les traces du poste en OTLP/HTTP, authentifiées par un
+# jeton d'écriture, n'en garde que les métadonnées et les relaie à Langfuse.
+# Aucun secret ici : le jeton et l'authentification Langfuse viennent du Secret
+# `qrg-otel-collector` (voir README.md, script creer-secrets.sh).
+#
+# À remplacer avant l'installation :
+#   - otlp.example.com : nom DNS de l'adresse OTLP du collecteur ;
+#   - qrg-otel-collector-tls : Secret TLS de l'ingress, à fournir ou à faire
+#     produire par cert-manager (voir README.md).
+
+mode: deployment
+fullnameOverride: qrg-otel-collector
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.161.0"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+extraEnvs:
+  - name: QRG_OTLP_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: qrg-otel-collector
+        key: otlp-token
+  - name: LANGFUSE_AUTH
+    valueFrom:
+      secretKeyRef:
+        name: qrg-otel-collector
+        key: langfuse-auth
+
+# Seul le port OTLP/HTTP est ouvert.
+ports:
+  otlp:
+    enabled: false
+  otlp-http:
+    enabled: true
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+  metrics:
+    enabled: false
+
+# L'ingress termine TLS et n'expose que le chemin des traces.
+ingress:
+  enabled: true
+  annotations: {}
+  hosts:
+    - host: otlp.example.com
+      paths:
+        - path: /v1/traces
+          pathType: Exact
+          port: 4318
+  tls:
+    - secretName: qrg-otel-collector-tls
+      hosts:
+        - otlp.example.com
+
+config:
+  extensions:
+    # Refuse toute requête sans `Authorization: Bearer <jeton du poste>`.
+    bearertokenauth/qrg:
+      scheme: Bearer
+      token: ${env:QRG_OTLP_TOKEN}
+
+  receivers:
+    jaeger: null
+    prometheus: null
+    zipkin: null
+    otlp:
+      protocols:
+        grpc: null
+        http:
+          endpoint: ${env:MY_POD_IP}:4318
+          auth:
+            authenticator: bearertokenauth/qrg
+
+  # Seconde barrière derrière `qrg-otel` : les traces ne gardent que des
+  # métadonnées. Une erreur d'évaluation dans filter ou transform abandonne
+  # le lot (error_mode: propagate) au lieu de le laisser passer.
+  processors:
+    # Abandonne tous les événements de span (prompts, exceptions, contenus).
+    filter/no-span-events:
+      error_mode: propagate
+      trace_conditions:
+        - IsMatch(spanevent.name, ".*")
+    # Réduit les attributs de ressource et de portée à une liste fixe, vide
+    # le message de statut, qui porte le texte des erreurs, et retire les
+    # liens de span, dont les attributs échappent à redaction.
+    transform/strip:
+      error_mode: propagate
+      trace_statements:
+        - keep_keys(resource.attributes, ["service.name", "service.version", "telemetry.sdk.name", "telemetry.sdk.language", "telemetry.sdk.version"])
+        - keep_keys(scope.attributes, [])
+        - set(span.status.message, "")
+        - set(span.links, nil)
+    # Supprime tout attribut absent de la liste, puis masque les valeurs qui
+    # ont la forme d'une clé ou d'un jeton. La liste suit les attributs émis
+    # par @loongsuite/otel-util-genai 0.1.1 et dsh-plugin ; les attributs
+    # propres à QRG viendront avec #20.
+    redaction/allowlist:
+      allow_all_keys: false
+      allowed_keys:
+        # Le processeur filtre aussi les attributs de ressource : la liste
+        # fixe gardée par transform/strip doit donc y figurer.
+        - service.name
+        - service.version
+        - telemetry.sdk.name
+        - telemetry.sdk.language
+        - telemetry.sdk.version
+        - error.type
+        - gen_ai.operation.name
+        - gen_ai.provider.name
+        - gen_ai.span.kind
+        - gen_ai.request.model
+        - gen_ai.request.max_tokens
+        - gen_ai.request.temperature
+        - gen_ai.request.top_p
+        - gen_ai.request.reasoning_effort
+        - gen_ai.response.model
+        - gen_ai.response.finish_reasons
+        - gen_ai.response.time_to_first_token
+        - gen_ai.usage.input_tokens
+        - gen_ai.usage.output_tokens
+        - gen_ai.usage.total_tokens
+        - gen_ai.usage.cache_creation.input_tokens
+        - gen_ai.usage.cache_read.input_tokens
+        - gen_ai.usage.reasoning_tokens
+        - gen_ai.agent.id
+        - gen_ai.agent.name
+        - gen_ai.tool.name
+        - gen_ai.tool.type
+        - gen_ai.tool.call.id
+        - gen_ai.session.id
+        - gen_ai.conversation.id
+        - gen_ai.turn.id
+        - gen_ai.step.id
+        - dsh.session.id
+        - dsh.session.parent_id
+        - dsh.session.delegation_depth
+        - dsh.session.origin
+        - dsh.agent.preset
+        - dsh.llm.attempt
+        - dsh.step
+        - dsh.turn
+        - dsh.turn.end_reason
+        - langfuse.observation.completion_start_time
+      blocked_values:
+        - "sk-[A-Za-z0-9_-]{20,}"
+        - "gh[pousr]_[A-Za-z0-9]{36,}"
+        - "github_pat_[A-Za-z0-9_]{22,}"
+        - "eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}"
+      # Compteurs seulement ; `debug` ajouterait les noms des attributs
+      # supprimés, utile le temps d'ajuster la liste.
+      summary: info
+
+  exporters:
+    debug: null
+    otlp_http/langfuse:
+      endpoint: http://langfuse-web.langfuse.svc.cluster.local:3000/api/public/otel
+      headers:
+        Authorization: "Basic ${env:LANGFUSE_AUTH}"
+        x-langfuse-ingestion-version: "4"
+
+  service:
+    extensions:
+      - health_check
+      - bearertokenauth/qrg
+    pipelines:
+      logs: null
+      metrics: null
+      traces:
+        receivers:
+          - otlp
+        processors:
+          - memory_limiter
+          - filter/no-span-events
+          - transform/strip
+          - redaction/allowlist
+          - batch
+        exporters:
+          - otlp_http/langfuse
