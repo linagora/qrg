@@ -1,10 +1,10 @@
 # Spécification de `.linagora/sensitivity.yml` (lot 0)
 
-16 octobre 2026. Statut : règles de sécurité validées par le Security Officer le 16 octobre 2026 (dernière section), complétées le même jour pour deux voies qui ne passent pas par les chemins, puis après la démonstration du lot 0 ; le format sera confirmé à l'implémentation du lot 1.
+16 octobre 2026. Statut : règles de sécurité validées par le Security Officer le 16 octobre 2026 (dernière section), complétées le même jour pour deux voies qui ne passent pas par les chemins, puis après la démonstration du lot 0, et précisées le 18 octobre 2026 pour la classe que jugent les règles de routage ; le format sera confirmé à l'implémentation du lot 1.
 
 ## Rôle
 
-Le fichier déclare la classe de sensibilité, de C0 à C3, de chaque chemin d'un dépôt. `qrg-router` en tire de façon déterministe la classe d'une tâche déléguée, puis retire les couples agent/modèle interdits avant tout appel au juge ou à Jev. Ni le texte de la tâche, ni l'orchestrateur, ni aucun modèle n'interviennent dans ce calcul (SPEC, composant 1).
+Le fichier déclare la classe de sensibilité, de C0 à C3, de chaque chemin d'un dépôt. `qrg-router` en tire de façon déterministe la classe d'une tâche déléguée, puis retire les couples agent/modèle interdits avant tout appel au juge ou à Jev. Ni le texte de la tâche, ni l'orchestrateur, ni aucun modèle ne fixent la classe : le modèle de tête ne fournit que le périmètre estimé, et l'espace de travail de l'enfant reste la frontière (SPEC, composant 1).
 
 ## Emplacement et version de confiance
 
@@ -35,11 +35,11 @@ La classe d'un chemin est le maximum de `default`, des classes de toutes les zon
 
 Quelques motifs sont C3 quel que soit le fichier, sans possibilité de les abaisser : `**/.env`, `**/.env.local`, `**/.env.*.local`, `**/*.pem`, `**/*.p12`, `**/*.pfx`, `**/id_rsa`, `**/id_ecdsa`, `**/id_ed25519`, `**/.netrc`.
 
-La classe d'une tâche est le maximum des classes des chemins que l'enfant peut lire, c'est-à-dire de son espace de travail (section suivante). Le périmètre estimé dans le `TaskDescriptor` sert seulement à choisir le couple : il vient d'un modèle, il ne peut donc pas servir de frontière. Si l'appel de l'orchestrateur porte une classe plus basse que la classe calculée, elle est ignorée et la tentative est tracée (E-06).
+La classe d'une tâche, celle que jugent les règles de routage, est le maximum des classes des chemins de son périmètre estimé dans le `TaskDescriptor`, où un répertoire vaut tous ses chemins et un périmètre vide le dépôt entier. Ce périmètre sert seulement à choisir le couple : il vient d'un modèle, il ne peut donc pas servir de frontière. La frontière est la classe de l'espace de travail, maximum des classes des chemins que l'enfant peut lire (section suivante), vérifiée juste avant le lancement (décision du 18 octobre 2026). Si l'appel de l'orchestrateur porte une classe plus basse que la classe calculée, elle est ignorée et la tentative est tracée (E-06).
 
 ## Ce que voit l'enfant
 
-La spec initiale ne traitait pas ce point. Un agent lit tout son répertoire de travail et, dans un worktree Git, tout l'historique via `.git`. Calculer la classe sur les fichiers visés par la tâche laisserait donc une tâche C0 lire une zone C3 voisine. Règle retenue :
+La spec initiale ne traitait pas ce point. Un agent lit tout son répertoire de travail et, dans un worktree Git, tout l'historique via `.git`. Prendre pour frontière les seuls fichiers visés par la tâche laisserait donc une tâche C0 lire une zone C3 voisine. Règle retenue :
 
 - Un enfant servi par un modèle hébergé par LINAGORA travaille dans un worktree, comme le prévoit la spec.
 - Tout autre enfant (Claude Code, `acp:opencode`, DeepSeek hors LINAGORA, modèle sous contrat UE) travaille dans un export sans historique : `git archive` des seuls chemins suivis dont la classe est admise par le couple, dans un répertoire hors du dépôt, avec un `git init` et un commit initial. Jamais dans l'arbre de travail de l'utilisateur, où traînent des fichiers non suivis comme `.env`. Ses modifications reviennent sous forme de patch, appliqué après validation et seulement s'il ne touche que des chemins exportés. Le fichier `.linagora/sensitivity.yml` n'est jamais exporté, car il nomme les zones exclues et leurs étiquettes.
@@ -76,10 +76,12 @@ Les tests D-02, D-10, D-11, E-02 et E-06 de la spec s'appuient sur ce fichier. S
 
 Branche locale `qrg/sensitivity-zones` du clone de `linagora/claude-delegate`, ni commitée ni poussée. Elle ajoute `.linagora/sensitivity.yml` (défaut C0, le dépôt étant publié sous AGPL-3.0, et une zone par classe) et `qrg_pilot/`, qui contient par zone un petit module Python fictif avec ses tests, plus une ligne dans le tableau « Repository layout » du README. Chaque zone au-dessus de C0 porte un canari unique, recherché dans le journal de la gateway et dans la capture réseau des scénarios bout en bout : `qrg-canary-c1-1c880187`, `qrg-canary-c2-0f8e65d7`, `qrg-canary-c3-80792e6b`. Les 8 tests des zones et les 227 tests existants du dépôt passent.
 
-## Décisions du Security Officer (16 octobre 2026)
+## Décisions du Security Officer (16 et 18 octobre 2026)
 
 Michel-Marie Maudet a retenu les quatre préconisations. Un dépôt sans fichier, ou dont le fichier est invalide, est traité entièrement en C3. Un enfant servi hors de l'infrastructure LINAGORA travaille dans un export sans historique et rend son travail sous forme de patch, ce qui fait entrer l'export dans le lot 1. Les motifs C3 intégrés sont ceux de la liste ci-dessus, sans `.env.*` ni `*.key`. Seule la version fusionnée sur la branche par défaut peut abaisser une classe, sans exigence de CODEOWNERS à ce stade.
 
 Le même jour, il a retenu la fermeture des deux voies qui ne passent pas par les chemins : le fournisseur `fork` est retiré du profil et refusé par `qrg-router` vers un couple hors LINAGORA, et le texte de la tâche est filtré avant toute sortie par canaris et empreintes, la paraphrase restant un risque résiduel.
 
 Après la démonstration du lot 0, il a retenu deux précisions : le fichier de sensibilité n'est jamais exporté, et le format refuse un `**` qui n'occupe pas un segment entier ainsi que les caractères `[`, `]`, `{`, `}` et `\`.
+
+Le 18 octobre 2026, il a précisé la classe que jugent les règles de routage : celle du périmètre estimé, où un répertoire vaut tous ses chemins et un périmètre vide le dépôt entier, la classe de l'espace de travail restant la frontière vérifiée avant le lancement. Un périmètre sous-déclaré par le modèle de tête peut faire choisir Claude Code, qui ne reçoit alors qu'un export sans chemin C2 ni C3 ; le texte de la tâche reste filtré, et la paraphrase reste le risque résiduel accepté le 16 octobre.
