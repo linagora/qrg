@@ -16,7 +16,7 @@ La gateway est déclarée comme fournisseur compatible OpenAI (`notes/HANDOFF.md
 | DeepSeek hébergé par LINAGORA | absent de la gateway au 18 octobre 2026 |
 | Référence de la clé | `LINAGORA_API_KEY` |
 
-Le 18 octobre 2026, la clé ouvrait aussi `nox-4b` et trois routes d'embedding (`bge-multilingual-gemma2`, `bge-m3`, `qwen3-embedding-8b`), sans rôle au lot 1 : elles sont à retirer de la clé, qui ne doit garder que `qwen3.8` (décision du 18 octobre 2026).
+Le 18 octobre 2026, la clé ouvrait aussi `nox-4b` et trois routes d'embedding (`bge-multilingual-gemma2`, `bge-m3`, `qwen3-embedding-8b`), sans rôle au lot 1 : la clé a été restreinte le même jour à `qwen3.8` (décision du 18 octobre 2026).
 
 Le profil `qrg` ne porte que la référence de la clé, jamais sa valeur ; la structure suit `docs/user/guide/providers.md` de DSH :
 
@@ -34,7 +34,7 @@ Le profil `qrg` ne porte que la référence de la clé, jamais sa valeur ; la st
 
 ## Clé de la gateway
 
-La clé est dédiée à QRG : limitée aux routes du lot 1 si la gateway le permet, avec un plafond de dépense et une date d'expiration. DSH la lit par son service `credentials`, dans son fichier d'identifiants `$DSH_HOME/.credentials.yaml` (`~/.dsh` par défaut). Ce fichier suit le format `version: 1`, les clés étant rangées sous `refs:`, et DSH refuse de démarrer s'il est lisible par le groupe ou les autres. La référence `LINAGORA_API_KEY` est celle que la page Models de DSH dériverait d'un fournisseur d'identifiant `linagora` (`deriveKeyRef`, `packages/client/ui-settings-models/src/client/store.ts`).
+La clé est dédiée à QRG : limitée aux routes du lot 1, avec un plafond de dépense et une date d'expiration. DSH la lit par son service `credentials`, dans son fichier d'identifiants `$DSH_HOME/.credentials.yaml` (`~/.dsh` par défaut). Ce fichier suit le format `version: 1`, les clés étant rangées sous `refs:`, et DSH refuse de démarrer s'il est lisible par le groupe ou les autres. La référence `LINAGORA_API_KEY` est celle que la page Models de DSH dériverait d'un fournisseur d'identifiant `linagora` (`deriveKeyRef`, `packages/client/ui-settings-models/src/client/store.ts`).
 
 ### Étape guidée, hors de toute session Claude
 
