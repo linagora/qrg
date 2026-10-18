@@ -40,7 +40,7 @@ Aucune intégration avec Paperclip : les deux démarches restent indépendantes,
 
 ## Décisions
 
-Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté trois, toujours le 16 octobre, puis deux le 17 octobre et un le 18 octobre ; la question ouverte du ticket #10 en a ajouté un le 18 octobre. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre », « 17 octobre » ou « 18 octobre »).
+Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté trois, toujours le 16 octobre, puis deux le 17 octobre et un le 18 octobre ; les questions ouvertes des tickets #10 et #22 en ont ajouté deux le 18 octobre. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre », « 17 octobre » ou « 18 octobre »).
 
 | Sujet | Décision | Conséquence |
 | --- | --- | --- |
@@ -77,6 +77,7 @@ Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus stru
 | Contenu des traces (17 octobre) | Métadonnées seules : décision, délégation, modèle, tokens, durée et issue ; ni prompt, ni complétion, ni contenu de fichier, de question ou d'outil | `qrg-otel` force la capture du contenu à faux ; le collecteur supprime en seconde barrière tout attribut hors liste autorisée et tous les événements de span. Aucun contenu, quelle que soit sa classe, n'est stocké dans Langfuse |
 | Routes de la gateway (18 octobre) | Modèle de tête et juge local sur `qwen3.8` ; `nox-4b` hors lot 1 ; clé QRG restreinte à `qwen3.8` | Mistral et DeepSeek hébergés sont absents de la gateway au 18 octobre : au lot 1, le seul agent natif est Qwen, et le juge partage le modèle de tête faute d'un autre Qwen de chat parmi les routes relevées (`notes/acces-lot1.md`) |
 | Classe d'une tâche (18 octobre) | Les règles jugent la classe du périmètre estimé dans le `TaskDescriptor` ; un répertoire vaut tous ses chemins, un périmètre vide le dépôt entier | La classe de l'espace de travail, qui dépend du couple, reste la frontière, vérifiée juste avant le lancement. Un périmètre sous-déclaré par le modèle de tête peut faire choisir Claude Code, qui ne reçoit alors qu'un export sans chemin C2 ni C3 ; le texte de la tâche reste filtré, et la paraphrase reste le risque résiduel accepté le 16 octobre |
+| Lot de l'économie estimée (18 octobre) | Économie estimée, équivalent en euros et détail par tâche au lot 3, avec C-02, C-03 et C-06 ; au lot 1, la pastille n'affiche que la consommation réelle | Le lot 1 suit le tableau des lots et la note de décision ; r est calibré par la mini-campagne, sans session sur le compte dédié pour mesurer l'écart entre tokeniseurs. C-01 et C-04, qui testent la consommation réelle, entrent dans la recette du lot 1 |
 
 **Contraintes liées aux abonnements individuels** ([conditions Anthropic](https://code.claude.com/docs/en/legal-and-compliance))
 
@@ -307,7 +308,7 @@ La projection `tokenUsage` de DSH ne somme que les messages de sa propre session
 \text{économie} = \sum_{t \notin \text{Claude}} r_t \cdot \text{tokens}_t \; - \; \text{surcoût d'orchestration}
 ```
 
-Le ratio r vaut 1 au lot 1, corrigé seulement de l'écart entre tokeniseurs mesuré sur un corpus de code. Au lot 3, il est calibré par la mini-campagne puis, en continu, par les tâches comparables traitées dans Claude Code en usage réel : r est le rapport médian, par type de tâche, entre tokens Claude Code et tokens de l'agent natif, et l'écart interquartile donne la fourchette affichée.
+L'économie estimée, son équivalent en euros et le détail par tâche arrivent au lot 3 ; au lot 1, la pastille n'affiche que la consommation réelle (décision du 18 octobre 2026). Le ratio r est calibré par la mini-campagne puis, en continu, par les tâches comparables traitées dans Claude Code en usage réel : r est le rapport médian, par type de tâche, entre tokens Claude Code et tokens de l'agent natif, et l'écart interquartile donne la fourchette affichée.
 
 Avec des abonnements individuels, les tokens n'ont pas de prix unitaire pour l'utilisateur. L'indicateur principal est donc le volume de tokens Claude évités, c'est-à-dire du quota préservé ; l'équivalent en euros reste indicatif.
 
@@ -379,7 +380,7 @@ Cinq lots séquentiels. Chacun livre un résultat utilisable seul ; les durées 
 | 0. Étude | Fait : cause du blocage de grill-me, mécanisme du SDK, ACP, Jev, conditions d'usage des abonnements, points d'extension de DSH, audit des plugins candidats, fichier de sensibilité, arbitrages du 16 octobre, démonstration (export et Agent SDK) et note de décision, validée le 16 octobre 2026 ; le jeu d'évaluation relève du lot 3 | Note de décision validée |
 | 1. Routage à règles | Profil `qrg` (flux DeepSeek coupés, modèle de tête hébergé par LINAGORA, fork retiré), `PolicyProvider`, fichier de sensibilité, filtre du texte de tâche, export sans historique pour les enfants servis hors de l'infrastructure LINAGORA, outil `route_and_delegate`, agents natifs via la gateway, Claude Code en mode ponctuel par un fork minimal qui n'hérite de rien du poste (monté sans son outil global, une instance par modèle et par mode), traces OTel (`qrg-otel`), compteur de session (consommation réelle) | Une tâche routée et tracée de bout en bout sur claude-delegate |
 | 2. Interaction | Fork interactif du fournisseur Claude Code (`canUseTool`, sessions persistées, reprise par `resume` portée par QRG), questions posées dans le tour de la racine, outil `ask_user` pour les agents natifs, discussion ouverte avec DSH après accord | Un grill-me complet mené depuis DSH, puis implémentation routée vers un agent natif |
-| 3. Décision avancée | `ExternalProvider` sur Jev (C0 et C1), `JudgeProvider` local, mini-campagne de 40 tâches, tableau de bord de mesure en usage réel | Précision des routages et taux hors Anthropic mesurés |
+| 3. Décision avancée | `ExternalProvider` sur Jev (C0 et C1), `JudgeProvider` local, mini-campagne de 40 tâches, tableau de bord de mesure en usage réel, économie estimée du compteur de session | Précision des routages et taux hors Anthropic mesurés |
 | 4. Industrialisation | Autorisations relayées à l'utilisateur, canal Twake Chat, packaging de l'offre, authentification Claude au choix du client (clé API, abonnement, Bedrock, Vertex, Foundry) | Déploiement auprès d'une équipe interne |
 
 ## Batterie de tests
@@ -519,16 +520,16 @@ Mesures suivies :
 | ID | Test | Résultat attendu | Lot |
 | --- | --- | --- | --- |
 | C-01 | Session simulée avec usages connus (fausse gateway et faux serveur Anthropic) | Total affiché égal à la somme exacte des usages | 1 |
-| C-02 | Orchestrateur, juge et Jev consomment des tokens | Ce surcoût est déduit de l'économie, jamais ignoré | 1 |
-| C-03 | Tâche entièrement traitée par Claude Code | Économie nulle pour cette tâche | 1 |
+| C-02 | Orchestrateur, juge et Jev consomment des tokens | Ce surcoût est déduit de l'économie, jamais ignoré | 3 |
+| C-03 | Tâche entièrement traitée par Claude Code | Économie nulle pour cette tâche | 3 |
 | C-04 | Enfants concurrents | Chaque token attribué à une seule tâche, totaux cohérents | 1 |
 | C-05 | Redémarrage du harnais en cours de session | Compteurs reconstruits depuis les enregistrements QRG | 2 |
-| C-06 | Prix modifiés dans la configuration | Équivalent en euros recalculé sans redémarrage | 1 |
+| C-06 | Prix modifiés dans la configuration | Équivalent en euros recalculé sans redémarrage | 3 |
 | C-07 | Mini-campagne, puis tâches comparables en usage réel | Écart médian entre économie estimée et mesurée sous 25 % (proposition) ; fourchette contenant la valeur mesurée pour au moins 80 % des tâches | 3 |
 
 ### Critères de recette par lot
 
-- **Lot 1** : D-01 à D-17 (hors lot 3), L-01, L-02, L-08, L-12, S-01 à S-04, S-06 à S-08 et E-06 au vert en intégration continue.
+- **Lot 1** : D-01 à D-17 (hors lot 3), L-01, L-02, L-08, L-12, S-01 à S-04, S-06 à S-08, C-01, C-04 et E-06 au vert en intégration continue.
 - **Lot 2** : tous les tests Q et L du lot au vert ; E-01, E-02 et E-05 réussis trois fois de suite, pour absorber la variabilité des modèles.
 - **Lot 3** : mini-campagne exécutée sans routage grossièrement faux, cibles bloquantes tenues, tableau de bord en usage réel en place.
 - **Lot 4** : Q-10 au vert et une semaine d'usage par une équipe interne sans incident de sécurité.
@@ -547,7 +548,7 @@ Mesures suivies :
 - [x] Dépôt pilote : claude-delegate.
 - [x] Juge local : petit Qwen via la gateway ; `qwen3.8` au lot 1 (18 octobre 2026).
 - [x] Offre commerciale : authentification Claude au choix du client.
-- [x] Compteur : tokens Claude évités en mesure principale.
+- [x] Compteur : tokens Claude évités en mesure principale ; économie estimée au lot 3, le lot 1 n'affichant que la consommation réelle (18 octobre 2026).
 - [x] Sensibilité : règles jugées sur la classe du périmètre visé et frontière sur la classe de ce que l'enfant peut lire (18 octobre 2026), C3 sans fichier valide, motifs de secrets toujours C3, abaissement par la seule branche par défaut, export sans historique pour les enfants servis hors de l'infrastructure LINAGORA.
 - [x] Flux vers DeepSeek : tous coupés par le profil ; DeepSeek seulement via la gateway, sur poids hébergés par LINAGORA.
 - [x] Modèle de tête : hébergé par LINAGORA, imposé à chaque requête ; route `qwen3.8` au lot 1 (18 octobre 2026).
