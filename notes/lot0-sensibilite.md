@@ -74,7 +74,7 @@ Les tests D-02, D-10, D-11, E-02 et E-06 de la spec s'appuient sur ce fichier. S
 
 ## Dépôt pilote
 
-Branche locale `qrg/sensitivity-zones` du clone de `linagora/claude-delegate`, ni commitée ni poussée. Elle ajoute `.linagora/sensitivity.yml` (défaut C0, le dépôt étant publié sous AGPL-3.0, et une zone par classe) et `qrg_pilot/`, qui contient par zone un petit module Python fictif avec ses tests, plus une ligne dans le tableau « Repository layout » du README. Chaque zone au-dessus de C0 porte un canari unique, recherché dans le journal de la gateway et dans la capture réseau des scénarios bout en bout : `qrg-canary-c1-1c880187`, `qrg-canary-c2-0f8e65d7`, `qrg-canary-c3-80792e6b`. Les 8 tests des zones et les 227 tests existants du dépôt passent.
+La PR #54 de `linagora/claude-delegate`, fusionnée sur sa branche par défaut le 17 octobre 2026 (`7f2c556`), ajoute `.linagora/sensitivity.yml` (défaut C0, le dépôt étant publié sous AGPL-3.0, et une zone par classe) et `qrg_pilot/`, qui contient par zone un petit module Python fictif avec ses tests, plus une ligne dans le tableau « Repository layout » du README. Chaque zone au-dessus de C0 porte un canari unique, recherché dans le journal de la gateway et dans la capture réseau des scénarios bout en bout : `qrg-canary-c1-1c880187`, `qrg-canary-c2-0f8e65d7`, `qrg-canary-c3-80792e6b`. Les 8 tests des zones et les 227 tests existants du dépôt passent.
 
 ## Décisions du Security Officer (16 et 18 octobre 2026)
 
