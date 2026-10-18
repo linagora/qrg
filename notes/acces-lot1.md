@@ -1,20 +1,22 @@
 # Accès pour le lot 1
 
-Cette note rassemble ce qu'il faut pour joindre l'AI Gateway LINAGORA et la cible des traces au lot 1. Elle ne contient aucun secret : les clés restent hors du dépôt et hors de toute session Claude. Les décisions correspondantes sont dans la section Décisions de `notes/SPEC.md` (16 octobre 2026).
+Cette note rassemble ce qu'il faut pour joindre l'AI Gateway LINAGORA et la cible des traces au lot 1. Elle ne contient aucun secret : les clés restent hors du dépôt et hors de toute session Claude. Les décisions correspondantes sont dans la section Décisions de `notes/SPEC.md` (16, 17 et 18 octobre 2026).
 
 ## AI Gateway
 
-La gateway est déclarée comme fournisseur compatible OpenAI (`notes/HANDOFF.md`). L'adresse et les noms de routes ne sont pas des secrets ; ils sont à compléter une fois la clé QRG créée.
+La gateway est déclarée comme fournisseur compatible OpenAI (`notes/HANDOFF.md`). L'adresse et les noms de routes ne sont pas des secrets ; ils ont été relevés le 18 octobre 2026 avec la clé QRG, par l'étape 4 ci-dessous.
 
 | Élément | Valeur |
 | --- | --- |
-| Adresse de base | à compléter |
+| Adresse de base | `https://ai-api.linagora.com/v1` |
 | Protocole | OpenAI Chat Completions (`api: openai-completions`) |
-| Modèle de tête, hébergé par LINAGORA | à compléter |
-| Qwen (juge local et agents natifs) | à compléter |
-| Mistral | à compléter |
-| DeepSeek hébergé par LINAGORA | à compléter |
+| Modèle de tête, hébergé par LINAGORA | `qwen3.8` |
+| Qwen (juge local et agents natifs) | `qwen3.8` |
+| Mistral | absent de la gateway au 18 octobre 2026 |
+| DeepSeek hébergé par LINAGORA | absent de la gateway au 18 octobre 2026 |
 | Référence de la clé | `LINAGORA_API_KEY` |
+
+Le 18 octobre 2026, la clé ouvrait aussi `nox-4b` et trois routes d'embedding (`bge-multilingual-gemma2`, `bge-m3`, `qwen3-embedding-8b`), sans rôle au lot 1 : elles sont à retirer de la clé, qui ne doit garder que `qwen3.8` (décision du 18 octobre 2026).
 
 Le profil `qrg` ne porte que la référence de la clé, jamais sa valeur ; la structure suit `docs/user/guide/providers.md` de DSH :
 
@@ -25,9 +27,9 @@ Le profil `qrg` ne porte que la référence de la clé, jamais sa valeur ; la st
       linagora:
         apiKeyEnv: LINAGORA_API_KEY
         api: openai-completions
-        baseURL: <adresse de base>
+        baseURL: https://ai-api.linagora.com/v1
         models:
-          - id: <route>
+          - id: qwen3.8
 ```
 
 ## Clé de la gateway
@@ -54,8 +56,8 @@ Chaque commande se tape dans un terminal ordinaire, jamais avec `!` dans une ses
 
    ```sh
    read -rs K
-   curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $K" <adresse de base>/models
-   curl -s -H "Authorization: Bearer $K" <adresse de base>/models | jq -r '.data[].id'
+   curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $K" https://ai-api.linagora.com/v1/models
+   curl -s -H "Authorization: Bearer $K" https://ai-api.linagora.com/v1/models | jq -r '.data[].id'
    unset K
    ```
 
