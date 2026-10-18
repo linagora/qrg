@@ -40,7 +40,7 @@ Aucune intégration avec Paperclip : les deux démarches restent indépendantes,
 
 ## Décisions
 
-Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté trois, toujours le 16 octobre, puis deux le 17 octobre. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre » ou « 17 octobre »).
+Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté trois, toujours le 16 octobre, puis deux le 17 octobre et un le 18 octobre. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre », « 17 octobre » ou « 18 octobre »).
 
 | Sujet | Décision | Conséquence |
 | --- | --- | --- |
@@ -75,6 +75,7 @@ Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus stru
 | Cible des traces (16 octobre) | Langfuse auto-hébergé derrière un collecteur OpenTelemetry LINAGORA | Le poste n'exporte qu'en OTLP/HTTP vers le collecteur, avec un simple jeton d'écriture ; la paire de clés Langfuse reste sur le collecteur, qui filtre le contenu et peut changer de cible sans toucher QRG |
 | Version et hébergement de Langfuse (17 octobre) | Langfuse v4, sur un cluster Kubernetes LINAGORA par son chart Helm officiel, avec le collecteur sur le même cluster | La v3 ne reçoit plus que des correctifs de sécurité jusqu'en janvier 2027 : la v4 évite une migration en cours de projet. Le chart demande cert-manager et l'opérateur ClickHouse sur le cluster ; cluster, exploitant et noms DNS restent à fixer |
 | Contenu des traces (17 octobre) | Métadonnées seules : décision, délégation, modèle, tokens, durée et issue ; ni prompt, ni complétion, ni contenu de fichier, de question ou d'outil | `qrg-otel` force la capture du contenu à faux ; le collecteur supprime en seconde barrière tout attribut hors liste autorisée et tous les événements de span. Aucun contenu, quelle que soit sa classe, n'est stocké dans Langfuse |
+| Routes de la gateway (18 octobre) | Modèle de tête et juge local sur `qwen3.8` ; `nox-4b` hors lot 1 ; clé QRG restreinte à `qwen3.8` | Mistral et DeepSeek hébergés sont absents de la gateway au 18 octobre : au lot 1, le seul agent natif est Qwen, et le juge partage le modèle de tête faute d'un autre Qwen de chat parmi les routes relevées (`notes/acces-lot1.md`) |
 
 **Contraintes liées aux abonnements individuels** ([conditions Anthropic](https://code.claude.com/docs/en/legal-and-compliance))
 
@@ -101,7 +102,7 @@ Relais de questions  <──────  Plugin qrg-router      <──>  Moteu
 
 L'orchestrateur ne choisit plus le backend : le plugin interroge le moteur de décision puis délègue au couple retenu. Les questions de Claude Code passent par `canUseTool`, celles des agents natifs par l'outil `ask_user` de `qrg-ask` ; toutes sont posées dans le tour de la racine, seul agent que DSH autorise à interroger l'utilisateur. Les agents ACP n'ont pas de canal de question.
 
-Le modèle de tête lit la demande avant tout routage. DSH le règle par défaut sur l'API officielle DeepSeek (`deepseek-official`, `packages/bundle/base/cordis.patch.yml:90-94`) ; dans le profil `qrg`, il est hébergé par LINAGORA et revérifié à chaque requête de la racine (décision du 16 octobre 2026). Pour que `route_and_delegate` soit le seul chemin de délégation, le profil retire les groupes `delegation` des presets `standard` et `ptc`, n'active pas l'outil global `subagent_claude_code` et désactive le fournisseur `fork`. DSH ne permet pas de verrouiller sa configuration : une couche ultérieure de l'utilisateur peut rétablir chacune de ces lignes, d'où les contrôles de `qrg-router` à chaque délégation.
+Le modèle de tête lit la demande avant tout routage. DSH le règle par défaut sur l'API officielle DeepSeek (`deepseek-official`, `packages/bundle/base/cordis.patch.yml:90-94`) ; dans le profil `qrg`, il est hébergé par LINAGORA et revérifié à chaque requête de la racine (décision du 16 octobre 2026) ; au lot 1, c'est la route `qwen3.8` de la gateway (décision du 18 octobre 2026). Pour que `route_and_delegate` soit le seul chemin de délégation, le profil retire les groupes `delegation` des presets `standard` et `ptc`, n'active pas l'outil global `subagent_claude_code` et désactive le fournisseur `fork`. DSH ne permet pas de verrouiller sa configuration : une couche ultérieure de l'utilisateur peut rétablir chacune de ces lignes, d'où les contrôles de `qrg-router` à chaque délégation.
 
 ## Composant 1 : moteur de décision
 
@@ -135,7 +136,7 @@ Le routage sort du LLM orchestrateur. Un fournisseur de décision (`DecisionProv
 **Trois implémentations, activables par configuration**
 
 1. `PolicyProvider` : règles déclaratives en YAML. C'est la politique par défaut, déterministe et explicable.
-2. `JudgeProvider` : un petit modèle Qwen via la gateway classe la tâche quand aucune règle ne tranche, en JSON contraint.
+2. `JudgeProvider` : un petit modèle Qwen via la gateway classe la tâche quand aucune règle ne tranche, en JSON contraint. Au lot 1, c'est `qwen3.8`, qui sert aussi de modèle de tête (décision du 18 octobre 2026).
 3. `ExternalProvider` : appel à l'API Choice de Jev, réservé aux tâches C0 et C1 car l'API est hébergée aux États-Unis, et activé seulement après validation du contrat.
 
 Les fournisseurs s'enchaînent : règles d'abord, puis juge ou moteur externe, avec repli sur un agent natif par défaut.
@@ -162,6 +163,8 @@ Deux voies échappent à ce calcul et sont fermées autrement (décision du 16 o
 | `native` / Mistral hébergé | Rédaction en français, documentation, messages de commit | C0 à C3 |
 | `native` / DeepSeek hébergé | Code général, via la gateway sur poids hébergés par LINAGORA ; l'API officielle DeepSeek est coupée par le profil | C0 à C3 |
 | `acp:opencode` | Expérimentation | C0 |
+
+Au lot 1, la gateway ne sert que `qwen3.8` parmi ces modèles (relevé du 18 octobre 2026, `notes/acces-lot1.md`) : les couples Mistral et DeepSeek hébergés restent hors d'atteinte tant qu'elle ne les sert pas, et le seul agent natif disponible est Qwen.
 
 **Exemple de politique**
 
@@ -541,12 +544,12 @@ Mesures suivies :
 - [x] Paperclip : aucune intégration.
 - [x] Évaluation : mini-campagne de 40 tâches générées, puis mesure en usage réel.
 - [x] Dépôt pilote : claude-delegate.
-- [x] Juge local : petit Qwen via la gateway.
+- [x] Juge local : petit Qwen via la gateway ; `qwen3.8` au lot 1 (18 octobre 2026).
 - [x] Offre commerciale : authentification Claude au choix du client.
 - [x] Compteur : tokens Claude évités en mesure principale.
 - [x] Sensibilité : classe calculée sur ce que l'enfant peut lire, C3 sans fichier valide, motifs de secrets toujours C3, abaissement par la seule branche par défaut, export sans historique pour les enfants servis hors de l'infrastructure LINAGORA.
 - [x] Flux vers DeepSeek : tous coupés par le profil ; DeepSeek seulement via la gateway, sur poids hébergés par LINAGORA.
-- [x] Modèle de tête : hébergé par LINAGORA, imposé à chaque requête.
+- [x] Modèle de tête : hébergé par LINAGORA, imposé à chaque requête ; route `qwen3.8` au lot 1 (18 octobre 2026).
 - [x] Héritage de contexte et texte de tâche : fournisseur `fork` retiré, filtre de sortie par canaris et empreintes.
 - [x] Questions des enfants : posées dans le tour de la racine, option D en repli.
 - [x] Reprise de Claude Code : nouvelle exécution du fork avec `resume`, portée par QRG.
@@ -561,7 +564,8 @@ Mesures suivies :
 - [x] Prototype du SDK 0.3.263, démonstration du lot 0 : authentification par abonnement dans un environnement expurgé, `AskUserQuestion` via `canUseTool` avec une réponse rendue à 75 s, `resume` et emplacement des sessions persistées, plugin passé explicitement sans `settingSources`.
 - [x] Note de décision du lot 0 (`notes/lot0-note-de-decision.md`) : validée le 16 octobre 2026, sans réserve.
 - [x] Création de `linagora/qrg` sur GitHub : dépôt privé créé le 16 octobre 2026, qui porte `notes/` ; le prototype du lot 0 est sur la branche `prototype/lot0-demo`.
-- [ ] Accès pour le lot 1 : seule l'AI Gateway est disponible au 16 octobre 2026. Gateway : clé dédiée à QRG, à ranger hors de toute session Claude dans le fichier d'identifiants de DSH sous la référence `LINAGORA_API_KEY`, par l'étape guidée de `notes/acces-lot1.md`, qui note aussi l'adresse et les routes (décision du 16 octobre 2026). Traces : Langfuse v4 derrière un collecteur OpenTelemetry LINAGORA, sur un cluster Kubernetes LINAGORA par le chart Helm de Langfuse (décisions des 16 et 17 octobre 2026) ; cluster, exploitant et noms DNS à fixer, puis adresse OTLP à noter dans `notes/acces-lot1.md`.
+- [ ] Accès pour le lot 1 : seule l'AI Gateway est disponible au 16 octobre 2026. Gateway : clé dédiée à QRG rangée le 18 octobre 2026, hors de toute session Claude, dans le fichier d'identifiants de DSH sous la référence `LINAGORA_API_KEY`, et vérifiée par l'étape guidée de `notes/acces-lot1.md`, qui note l'adresse et les routes (décisions des 16 et 18 octobre 2026) ; restent la restriction de la clé à `qwen3.8`, le retrait de l'ancienne variable du shell et la révocation de l'ancienne clé. Traces : Langfuse v4 derrière un collecteur OpenTelemetry LINAGORA, sur un cluster Kubernetes LINAGORA par le chart Helm de Langfuse (décisions des 16 et 17 octobre 2026) ; cluster, exploitant et noms DNS à fixer, puis adresse OTLP à noter dans `notes/acces-lot1.md`.
+- [ ] Mistral et DeepSeek hébergés : absents de la gateway au 18 octobre 2026 ; les couples natifs correspondants attendent qu'elle les serve.
 - [x] Version de Langfuse : v4 (décision du 17 octobre 2026), la v3 ne recevant plus que des correctifs de sécurité jusqu'en janvier 2027.
 - [ ] Prototype du SDK au lot 2, pour ce qui reste : serveur MCP dans le processus, hook `defer`, usage du message de résultat.
 - [ ] Commandes Bash admises par `dontAsk` dans l'export : à vérifier au lot 1, pour savoir si Claude Code peut y lancer des tests.
