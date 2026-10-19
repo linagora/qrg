@@ -107,6 +107,8 @@ L'orchestrateur ne choisit plus le backend : le plugin interroge le moteur de d�
 
 Le modèle de tête lit la demande avant tout routage. DSH le règle par défaut sur l'API officielle DeepSeek (`deepseek-official`, `packages/bundle/base/cordis.patch.yml:90-94`) ; dans le profil `qrg`, il est hébergé par LINAGORA et revérifié à chaque requête de la racine (décision du 16 octobre 2026) ; au lot 1, c'est la route `qwen3.8` de la gateway (décision du 18 octobre 2026). Pour que `route_and_delegate` soit le seul chemin de délégation, le profil retire les groupes `delegation` des presets `standard` et `ptc`, n'active pas l'outil global `subagent_claude_code` et désactive le fournisseur `fork`. DSH ne permet pas de verrouiller sa configuration : une couche ultérieure de l'utilisateur peut rétablir chacune de ces lignes, d'où les contrôles de `qrg-router` à chaque délégation.
 
+Un patch ne peut ni insérer ni retirer une ligne dans les `config.plugins` d'un preset : il en remplace toute la configuration. Le bundle QRG remplace donc celle de `standard` et `ptc` par une copie des presets de DSH, avec la ligne d'outils de `qrg-router` juste après `delegation` ; un test compare ces copies aux presets installés, et chaque montée de DSH les refait.
+
 ## Composant 1 : moteur de décision
 
 Le routage sort du LLM orchestrateur. Un fournisseur de décision (`DecisionProvider`) reçoit une description de tâche et renvoie un couple agent/modèle justifié. L'orchestrateur ne choisit plus le backend : il appelle un seul outil, `route_and_delegate`.

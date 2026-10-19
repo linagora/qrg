@@ -1,0 +1,19 @@
+packages:
+  - packages/*
+
+# Keep workspace packages out of node_modules/.pnpm/node_modules: the dsh
+# installation resolves bundles from there before the profile, which would
+# hide the profile link the composition tests rely on.
+hoistWorkspacePackages: false
+
+# Install scripts stay off. None is needed to boot the composition tests:
+# they fetch or check native binaries already shipped as prebuilds, restore
+# the executable bit of node-pty's helper (used only by DSH terminals), or
+# print messages.
+allowBuilds:
+  '@deepseek-ai/dsh-subprocess-local': false
+  '@google/genai': false
+  esbuild: false
+  koffi: false
+  node-pty: false
+  protobufjs: false
