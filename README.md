@@ -8,6 +8,8 @@ Monorepo en workspace pnpm :
 
 - `packages/router` (`@linagora/qrg-router`) : plugin DSH scindé en deux lignes, la ligne hôte (moteur de décision, registre, appels aux sous-agents) et la ligne d'outils `@linagora/qrg-router/tools`, insérée dans les presets d'agent. Les deux sont encore vides.
 - `packages/bundle` (`@linagora/qrg-bundle`) : bundle de profil DSH. Son `cordis.patch.yml` monte la ligne hôte et insère la ligne d'outils dans les presets `standard` et `ptc`.
+- `scripts/` : outillage des tests transverses.
+- `tests/` : tests transverses (épinglage de DSH).
 
 Les sources sont en TypeScript et DSH les charge telles quelles, par le type stripping de Node, sans étape de build. Node refuse ce mode sous `node_modules` : installer le bundle comme dépendance demandera un build.
 
@@ -29,7 +31,7 @@ Le test de composition (`packages/bundle/tests/composition.test.ts`) lance le vr
 
 ## Épinglage de DSH
 
-QRG vise DSH 0.2.1-alpha.4, épinglée exactement : les API d'une alpha ne sont pas stables, et DSH saute au démarrage, sans erreur, un bundle dont `engines.dsh` ne couvre pas sa version. Toutes les dépendances `@deepseek-ai/dsh*` et tous les `engines.dsh` portent donc la même version exacte.
+QRG vise DSH 0.2.1-alpha.4, épinglée exactement : les API d'une alpha ne sont pas stables, et DSH saute au démarrage, sans erreur, un bundle dont `engines.dsh` ne couvre pas sa version. Toutes les dépendances `@deepseek-ai/dsh*` et tous les `engines.dsh` portent donc la même version exacte, ce que vérifie `tests/dsh-pin.test.ts`.
 
 **Toute montée de DSH relève `engines.dsh` dans le même changement**, avec :
 
