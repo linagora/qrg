@@ -18,6 +18,8 @@ import { describe, expect, it } from 'vitest'
 const PROFILE = 'qrg-composition'
 const PROCESS_TIMEOUT_MS = 90_000
 const TEST_TIMEOUT_MS = PROCESS_TIMEOUT_MS + 15_000
+/** Set by the DSH canary job to the newer dsh version it installed in place of the pinned one. */
+const CANARY_VERSION_ENV = 'QRG_DSH_CANARY_VERSION'
 /** cordis declares FiberState as a const enum, erased at runtime; the annotation checks the value. */
 const FIBER_ACTIVE: FiberState.ACTIVE = 2
 
@@ -29,6 +31,7 @@ const repoTsconfig = fileURLToPath(new URL('../../../tsconfig.json', import.meta
 
 interface PackageManifest {
   name: string
+  version: string
 }
 
 interface ProbeReport {
@@ -59,6 +62,17 @@ async function writeProfile(profileDir: string, bundle: PackageManifest): Promis
   await writeFile(join(profileDir, 'cordis.patch.yml'), '[]\n')
 }
 
+/**
+ * Grant the bundle and qrg-router the exact exemption `dsh plugin allow-version`
+ * gives: the canary measures API compatibility, not the version gate it
+ * already fails.
+ */
+async function allowCanaryVersion(profileDir: string, bundle: PackageManifest, canaryVersion: string): Promise<void> {
+  const router = await readManifest(require.resolve('@linagora/qrg-router/package.json'))
+  const exemptions = Object.fromEntries([bundle, router].map(pkg => [`${pkg.name}@${pkg.version}`, [canaryVersion]]))
+  await writeFile(join(profileDir, 'compatibility.json'), JSON.stringify(exemptions, undefined, 2))
+}
+
 describe('QRG bundle composition', () => {
   it('activates the qrg-router host row and its tools row in the standard and ptc presets', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'qrg-composition-'))
@@ -68,6 +82,8 @@ describe('QRG bundle composition', () => {
       const profileDir = join(cwd, '.dsh', 'profiles', PROFILE)
       const bundle = await readManifest(join(bundleDir, 'package.json'))
       await writeProfile(profileDir, bundle)
+      const canaryVersion = process.env[CANARY_VERSION_ENV]
+      if (canaryVersion !== undefined && canaryVersion !== '') await allowCanaryVersion(profileDir, bundle, canaryVersion)
       // JSON is valid YAML; the absolute probe path is anchored as a file URL.
       await writeFile(overlay, JSON.stringify([{
         insert: [{ id: 'qrg-composition-probe', name: probePath, config: { output } }],

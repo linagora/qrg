@@ -8,8 +8,8 @@ Monorepo en workspace pnpm :
 
 - `packages/router` (`@linagora/qrg-router`) : plugin DSH scindé en deux lignes, la ligne hôte (moteur de décision, registre, appels aux sous-agents) et la ligne d'outils `@linagora/qrg-router/tools`, insérée dans les presets d'agent. Les deux sont encore vides.
 - `packages/bundle` (`@linagora/qrg-bundle`) : bundle de profil DSH. Son `cordis.patch.yml` monte la ligne hôte et insère la ligne d'outils dans les presets `standard` et `ptc`.
-- `scripts/` : outillage des tests transverses.
-- `tests/` : tests transverses (épinglage de DSH, chaîne d'approvisionnement).
+- `scripts/` : outillage des tests transverses et de la CI, dont le canari DSH.
+- `tests/` : tests transverses (épinglage de DSH, chaîne d'approvisionnement, canari).
 
 Les sources sont en TypeScript et DSH les charge telles quelles, par le type stripping de Node, sans étape de build. Node refuse ce mode sous `node_modules` : installer le bundle comme dépendance demandera un build.
 
@@ -40,6 +40,12 @@ QRG vise DSH 0.2.1-alpha.4, épinglée exactement : les API d'une alpha ne sont 
 - `@deepseek-ai/cordis` et `@deepseek-ai/cordis-plugin-loader`, alignés sur les versions que déclare la nouvelle version de `@deepseek-ai/dsh` ;
 - les copies des presets `standard` et `ptc` dans `packages/bundle/cordis.patch.yml`, que `packages/bundle/tests/presets.test.ts` compare aux presets installés ;
 - le lockfile, par `pnpm install`.
+
+## Canari DSH
+
+Le workflow `DSH canary` rejoue `pnpm check` contre une version plus récente de DSH sans toucher à l'épinglage : `scripts/dsh-canary.ts` ajoute des `overrides` à la copie CI de `pnpm-workspace.yaml`, et le test de composition accorde au bundle et à `qrg-router` l'exemption de version exacte que donne `dsh plugin allow-version`. Le job tourne deux fois par jour, à chaque push sur `main` et à la demande. Son échec annonce une rupture sans bloquer la CI : ce n'est pas un check requis.
+
+La version retenue est la plus récemment publiée, alpha, rc ou finale, parmi celles qui ont passé le délai de 24 h que pnpm 11 impose aux nouvelles versions (`minimumReleaseAge`). Son installation garde le mode strict du workspace (voir Chaîne d'approvisionnement). Si aucune version au moins aussi récente que l'épinglage n'a passé le délai, le job s'arrête sans rien rejouer.
 
 ## Chaîne d'approvisionnement
 

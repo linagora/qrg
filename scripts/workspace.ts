@@ -1,6 +1,7 @@
 /**
- * Workspace package.json reading for the DSH pin rules: which dependencies
- * are DSH packages, and where the pinned version lives.
+ * Workspace package.json reading shared by the DSH pin test and the DSH
+ * canary script, so both agree on which dependencies are DSH packages and on
+ * where the pinned version lives.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
