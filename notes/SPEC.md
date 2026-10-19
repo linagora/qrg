@@ -40,7 +40,7 @@ Aucune intégration avec Paperclip : les deux démarches restent indépendantes,
 
 ## Décisions
 
-Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté trois, toujours le 16 octobre, puis deux le 17 octobre et un le 18 octobre ; les questions ouvertes des tickets #10 et #22 en ont ajouté deux le 18 octobre. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre », « 17 octobre » ou « 18 octobre »).
+Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté trois, toujours le 16 octobre, puis deux le 17 octobre et un le 18 octobre ; les questions ouvertes des tickets #10 et #22 en ont ajouté deux le 18 octobre, et le squelette du monorepo (#4) un le même jour. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre », « 17 octobre » ou « 18 octobre »).
 
 | Sujet | Décision | Conséquence |
 | --- | --- | --- |
@@ -78,6 +78,7 @@ Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus stru
 | Routes de la gateway (18 octobre) | Modèle de tête et juge local sur `qwen3.8` ; `nox-4b` hors lot 1 ; clé QRG restreinte à `qwen3.8` | Mistral et DeepSeek hébergés sont absents de la gateway au 18 octobre : au lot 1, le seul agent natif est Qwen, et le juge partage le modèle de tête faute d'un autre Qwen de chat parmi les routes relevées (`notes/acces-lot1.md`) |
 | Classe d'une tâche (18 octobre) | Les règles jugent la classe du périmètre estimé dans le `TaskDescriptor` ; un répertoire vaut tous ses chemins, un périmètre vide le dépôt entier | La classe de l'espace de travail, qui dépend du couple, reste la frontière, vérifiée juste avant le lancement. Un périmètre sous-déclaré par le modèle de tête peut faire choisir Claude Code, qui ne reçoit alors qu'un export sans chemin C2 ni C3 ; le texte de la tâche reste filtré, et la paraphrase reste le risque résiduel accepté le 16 octobre |
 | Lot de l'économie estimée (18 octobre) | Économie estimée, équivalent en euros et détail par tâche au lot 3, avec C-02, C-03 et C-06 ; au lot 1, la pastille n'affiche que la consommation réelle | Le lot 1 suit le tableau des lots et la note de décision ; r est calibré par la mini-campagne, sans session sur le compte dédié pour mesurer l'écart entre tokeniseurs. C-01 et C-04, qui testent la consommation réelle, entrent dans la recette du lot 1 |
+| Expressions `!!js` des presets copiés (18 octobre) | Les deux expressions sur `process.platform` par lesquelles `standard` et `ptc` désactivent `tool-bash` et `tool-pwsh` sont admises, reprises de DSH à l'identique | Les copies restent identiques aux presets installés et le test qui les compare reste strict ; le contrôle de CI de `!!js` (#15) les admet dans ces seules copies, et partout ailleurs nos patchs ne lisent que `process.env` |
 
 **Contraintes liées aux abonnements individuels** ([conditions Anthropic](https://code.claude.com/docs/en/legal-and-compliance))
 
@@ -323,7 +324,7 @@ Chaque décision, délégation et question à l'utilisateur produit une trace Op
 
 **Sécurité**
 
-- Tout plugin communautaire est audité puis figé sur un commit précis. Le bundle et le patch du profil `qrg` exécutent du JavaScript au chargement (`!!js`) et suivent le même régime : revue, installation par `github:linagora/qrg#<sha>`, empreinte vérifiée par QRG au démarrage ; dans nos patchs, `!!js` se limite à la lecture de `process.env`, contrôlé en CI (décision du 16 octobre 2026).
+- Tout plugin communautaire est audité puis figé sur un commit précis. Le bundle et le patch du profil `qrg` exécutent du JavaScript au chargement (`!!js`) et suivent le même régime : revue, installation par `github:linagora/qrg#<sha>`, empreinte vérifiée par QRG au démarrage ; dans nos patchs, `!!js` se limite à la lecture de `process.env`, contrôlé en CI (décision du 16 octobre 2026), à l'exception des deux expressions sur `process.platform` que les copies des presets `standard` et `ptc` reprennent de DSH à l'identique (décision du 18 octobre 2026).
 - `bypassPermissions` et `danger-full-access` sont interdits ; le mode `full` n'existe pas dans DSH. `danger-full-access` est atteignable par `DSH_PERMISSION_MODE`, un preset de permission, une surcharge de session et l'héritage d'un enfant natif. DSH ne permettant pas de verrouiller sa configuration, et l'échec d'un plugin n'arrêtant pas le démarrage, l'interdiction est appliquée par `qrg-router`, qui refuse toute délégation si la session ou la configuration permet l'un de ces modes et le signale au démarrage.
 - Le profil coupe tous les flux par défaut vers DeepSeek (décision du 16 octobre 2026) : télémétrie vers `dsh-otel-collector.deepseeksvc.com`, champs `dsh_session_log` (tout le journal de la session, jusqu'à 8 Mio par requête) et `dsh_plugin_packages`, routes officielles `llm-deepseek` et `llm-deepseek-account`, recherche web par `deepseek-official`. Ces lignes sont désactivées dans le patch du profil, qui s'applique même quand un bundle est sauté ; `qrg-router` refuse de déléguer et alerte si l'une d'elles est réactivée.
 - Le modèle de tête est hébergé par LINAGORA et revérifié à chaque requête de la racine (waterfall `agent/request`) ; toute autre route est refusée et tracée.
@@ -575,6 +576,7 @@ Mesures suivies :
 - [ ] Discussion DSH (callbacks interactifs, fournisseur externe continuable, questions des enfants) : à ouvrir sur accord explicite.
 - [ ] Mini-campagne : compte Claude Code mmaudet@linagora.com dédié à la campagne, l'autre compte réservé au travail quotidien ; date de lancement de la mini-campagne à fixer.
 - [ ] Conditions et rétention des données chez TypeSafe AI : qui les vérifie, et pour quand ?
+- [x] `!!js` des copies de presets : `standard` et `ptc` désactivent `tool-bash` et `tool-pwsh` par `!!js process.platform === 'win32'` et `!== 'win32'` ; ces deux expressions sont admises dans les copies du bundle QRG, reprises de DSH à l'identique (décision du 18 octobre 2026).
 
 ## Sources
 
