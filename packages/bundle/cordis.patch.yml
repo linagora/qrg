@@ -8,10 +8,28 @@
 # rows with the lists dsh-web-app 0.2.1-alpha.4 ships, plus the tools row
 # right after the `delegation` group. tests/presets.test.ts compares these
 # copies with the installed presets: redo them at every DSH bump.
+#
+# The LINAGORA AI Gateway is a route of the pi-ai adapter that dsh-base
+# mounts dormant. The route names the reference of its key, resolved per
+# request by the credentials service: no key ever enters this file.
 
 - insert:
     - id: qrg-router
       name: '@linagora/qrg-router'
+      config:
+        gateway: linagora
+        fallbackModel: qwen3.8
+
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+  config:
+    providers:
+      linagora:
+        apiKeyEnv: LINAGORA_API_KEY
+        api: openai-completions
+        baseURL: https://ai-api.linagora.com/v1
+        models:
+          - id: qwen3.8
 
 - id: preset-standard
   name: '@deepseek-ai/dsh-agent-preset'
