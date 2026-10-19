@@ -1,0 +1,23 @@
+{
+  "name": "qrg",
+  "private": true,
+  "description": "QRG: agent and model routing for DeepSeek Harness",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "packageManager": "pnpm@11.28.5",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "scripts": {
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run test",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "oxlint --deny-warnings",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "oxlint": "^1.88.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.12"
+  }
+}

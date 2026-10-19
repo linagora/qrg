@@ -1,0 +1,25 @@
+{
+  "name": "@linagora/qrg-router",
+  "version": "0.0.0",
+  "private": true,
+  "description": "qrg-router DSH plugin: host row (decision engine, registry, sub-agent calls) and tools row inserted in the agent presets",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tools": "./src/tools.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "dsh": "0.2.1-alpha.4"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.5-alpha.2"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5-alpha.2"
+  }
+}
