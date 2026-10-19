@@ -9,7 +9,7 @@ Monorepo en workspace pnpm :
 - `packages/router` (`@linagora/qrg-router`) : plugin DSH scindé en deux lignes, la ligne hôte (moteur de décision, registre, appels aux sous-agents) et la ligne d'outils `@linagora/qrg-router/tools`, insérée dans les presets d'agent. Les deux sont encore vides.
 - `packages/bundle` (`@linagora/qrg-bundle`) : bundle de profil DSH. Son `cordis.patch.yml` monte la ligne hôte et insère la ligne d'outils dans les presets `standard` et `ptc`.
 - `scripts/` : outillage des tests transverses.
-- `tests/` : tests transverses (épinglage de DSH).
+- `tests/` : tests transverses (épinglage de DSH, chaîne d'approvisionnement).
 
 Les sources sont en TypeScript et DSH les charge telles quelles, par le type stripping de Node, sans étape de build. Node refuse ce mode sous `node_modules` : installer le bundle comme dépendance demandera un build.
 
@@ -44,6 +44,7 @@ QRG vise DSH 0.2.1-alpha.4, épinglée exactement : les API d'une alpha ne sont 
 ## Chaîne d'approvisionnement
 
 - Le délai de 24 h de pnpm 11 reste actif : en CI, un lockfile qui contient une version trop jeune fait échouer l'installation.
+- `pnpm-workspace.yaml` règle `minimumReleaseAgeStrict` : là où le mode par défaut ajouterait seul au fichier une exemption pour une version trop jeune, pnpm demande un accord en terminal et échoue en CI. `tests/supply-chain.test.ts` vérifie ce réglage et refuse toute exemption d'un paquet `@deepseek-ai/*`.
 - Aucun script d'installation de dépendance ne s'exécute (`allowBuilds` dans `pnpm-workspace.yaml`). Les tests n'en ont pas besoin ; le postinstall de `@deepseek-ai/dsh-subprocess-local`, qui rend exécutable l'assistant de node-pty, ne sert qu'aux terminaux de DSH.
 
 ## Licence

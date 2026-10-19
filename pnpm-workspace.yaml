@@ -17,3 +17,9 @@ allowBuilds:
   koffi: false
   node-pty: false
   protobufjs: false
+
+# Ask before exempting a version younger than pnpm's 24-hour release-age
+# gate, and fail in CI: in the default loose mode, pnpm would add the
+# exemption to this file by itself. tests/supply-chain.test.ts holds this
+# setting and rejects any exemption of an @deepseek-ai package.
+minimumReleaseAgeStrict: true
