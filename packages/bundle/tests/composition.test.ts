@@ -2,37 +2,20 @@
  * Real composition: the published dsh 0.2.1-alpha.4 launcher boots a profile
  * built from the shipped `web` template plus the QRG bundle, and a test
  * overlay inserts a probe row that reports the composition once startup
- * succeeds. The bundle goes through dsh's own bundle loading, `engines.dsh`
- * check included, through a profile `node_modules` link to this package.
+ * succeeds.
  */
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
-import { createRequire } from 'node:module'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { FiberState } from '@deepseek-ai/cordis'
-import { PROFILE_TEMPLATES } from '@deepseek-ai/dsh-app-boot'
-import { runLoaderSmoke } from '@deepseek-ai/dsh-loader-smoke'
 import { describe, expect, it } from 'vitest'
+import { LAUNCH_TEST_TIMEOUT_MS, launchQrgProfile } from './fixtures/launch.ts'
 
-const PROFILE = 'qrg-composition'
-const PROCESS_TIMEOUT_MS = 90_000
-const TEST_TIMEOUT_MS = PROCESS_TIMEOUT_MS + 15_000
-/** Set by the DSH canary job to the newer dsh version it installed in place of the pinned one. */
-const CANARY_VERSION_ENV = 'QRG_DSH_CANARY_VERSION'
 /** cordis declares FiberState as a const enum, erased at runtime; the annotation checks the value. */
 const FIBER_ACTIVE: FiberState.ACTIVE = 2
 
-const require = createRequire(import.meta.url)
-const dshBin = join(dirname(require.resolve('@deepseek-ai/dsh/package.json')), 'lib', 'bin.js')
-const bundleDir = fileURLToPath(new URL('..', import.meta.url))
 const probePath = fileURLToPath(new URL('fixtures/probe.ts', import.meta.url))
-const repoTsconfig = fileURLToPath(new URL('../../../tsconfig.json', import.meta.url))
-
-interface PackageManifest {
-  name: string
-  version: string
-}
 
 interface ProbeReport {
   hostRows: { id: string, name: string, fiberState?: FiberState }[]
@@ -43,67 +26,15 @@ interface ProbeReport {
   }[]
 }
 
-async function readManifest(path: string): Promise<PackageManifest> {
-  return JSON.parse(await readFile(path, 'utf8')) as PackageManifest
-}
-
-/** Create the profile the way `dsh plugin add` leaves it from the shipped `web` template, with the bundle linked instead of installed. */
-async function writeProfile(profileDir: string, bundle: PackageManifest): Promise<void> {
-  const web = PROFILE_TEMPLATES['web']
-  if (web === undefined) throw new Error('dsh ships no web profile template')
-  await mkdir(join(profileDir, 'node_modules', dirname(bundle.name)), { recursive: true })
-  await symlink(bundleDir, join(profileDir, 'node_modules', bundle.name), 'dir')
-  await writeFile(join(profileDir, 'package.json'), JSON.stringify({
-    name: `dsh-profile-${PROFILE}`,
-    private: true,
-    dependencies: { [bundle.name]: `link:${bundleDir}` },
-    dsh: { profile: { bundles: [...web.bundles, bundle.name] } },
-  }, undefined, 2))
-  await writeFile(join(profileDir, 'cordis.patch.yml'), '[]\n')
-}
-
-/**
- * Grant the bundle and qrg-router the exact exemption `dsh plugin allow-version`
- * gives: the canary measures API compatibility, not the version gate it
- * already fails.
- */
-async function allowCanaryVersion(profileDir: string, bundle: PackageManifest, canaryVersion: string): Promise<void> {
-  const router = await readManifest(require.resolve('@linagora/qrg-router/package.json'))
-  const exemptions = Object.fromEntries([bundle, router].map(pkg => [`${pkg.name}@${pkg.version}`, [canaryVersion]]))
-  await writeFile(join(profileDir, 'compatibility.json'), JSON.stringify(exemptions, undefined, 2))
-}
-
 describe('QRG bundle composition', () => {
   it('activates the qrg-router host row and its tools row in the standard and ptc presets', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'qrg-composition-'))
     try {
       const output = join(cwd, 'probe.json')
-      const overlay = join(cwd, 'probe.patch.yml')
-      const profileDir = join(cwd, '.dsh', 'profiles', PROFILE)
-      const bundle = await readManifest(join(bundleDir, 'package.json'))
-      await writeProfile(profileDir, bundle)
-      const canaryVersion = process.env[CANARY_VERSION_ENV]
-      if (canaryVersion !== undefined && canaryVersion !== '') await allowCanaryVersion(profileDir, bundle, canaryVersion)
-      // JSON is valid YAML; the absolute probe path is anchored as a file URL.
-      await writeFile(overlay, JSON.stringify([{
-        insert: [{ id: 'qrg-composition-probe', name: probePath, config: { output } }],
-      }]))
-      const { stderr } = await runLoaderSmoke({
+      const { stderr } = await launchQrgProfile({
         label: 'QRG bundle composition',
         cwd,
-        mode: 'lib',
-        binScript: dshBin,
-        libBinScript: dshBin,
-        configPath: overlay,
-        binArgs: ['--profile', PROFILE, '--patch', overlay, '--host', '127.0.0.1', '--port', '0', '--no-open'],
-        tsconfigPath: repoTsconfig,
-        processTimeoutMs: PROCESS_TIMEOUT_MS,
-        env: {
-          DSH_TELEMETRY_DISABLED: '1',
-          DEEPSEEK_API_KEY: undefined,
-          DEEPSEEK_BASE_URL: undefined,
-          ANTHROPIC_API_KEY: undefined,
-        },
+        overlay: [{ insert: [{ id: 'qrg-composition-probe', name: probePath, config: { output } }] }],
       })
 
       expect(stderr).toBe('')
@@ -125,5 +56,5 @@ describe('QRG bundle composition', () => {
     } finally {
       await rm(cwd, { recursive: true, force: true })
     }
-  }, TEST_TIMEOUT_MS)
+  }, LAUNCH_TEST_TIMEOUT_MS)
 })
