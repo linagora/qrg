@@ -1,0 +1,54 @@
+name: DSH canary
+
+# Replays `pnpm check` against the newest DSH version, alpha, release
+# candidate or release, that has passed pnpm's 24-hour release-age gate,
+# through pnpm overrides written on the CI checkout only
+# (scripts/dsh-canary.ts); the package.json pins stay untouched. A red run
+# announces a break the next DSH bump will meet. This workflow is not a
+# required check and never blocks the CI workflow.
+on:
+  schedule:
+    - cron: '17 5,17 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DSH_TELEMETRY_DISABLED: '1'
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  canary:
+    name: pnpm check on the newest DSH version
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v5.0.0
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 22
+
+      - name: Select the version and write the overrides
+        id: dsh
+        run: node scripts/dsh-canary.ts
+
+      - name: Install the version
+        if: steps.dsh.outputs.version != ''
+        run: pnpm install --no-frozen-lockfile
+
+      - name: pnpm check
+        if: steps.dsh.outputs.version != ''
+        env:
+          QRG_DSH_CANARY_VERSION: ${{ steps.dsh.outputs.version }}
+        run: pnpm check
