@@ -100,6 +100,9 @@ export async function launchQrgProfile(options: LaunchOptions): Promise<{ stdout
       DEEPSEEK_API_KEY: undefined,
       DEEPSEEK_BASE_URL: undefined,
       ANTHROPIC_API_KEY: undefined,
+      // The bundle's gateway route names this variable: a real key from the
+      // developer's shell must never reach the launched dsh.
+      LINAGORA_API_KEY: undefined,
       ...options.env,
     },
   })
