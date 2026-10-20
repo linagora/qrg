@@ -1,7 +1,7 @@
 # Hand-off : QRG, personnalisation de DeepSeek Harness avec query routing
 
 Destinataire : session Claude Code ouverte avec le compte **mmaudet@linagora.com**.
-Origine : session de cadrage des 15 et 16 octobre 2026 (compte michel.maudet@gmail.com).
+Origine : session de cadrage des 15 et 16 octobre 2026 (compte personnel du porteur).
 Porteur : Michel-Marie Maudet, DG de LINAGORA.
 
 La spécification complète est dans `SPEC.md`, fourni avec ce fichier. Lis-la en entier avant d'agir : elle fait foi en cas de doute. Ce hand-off dit quoi construire, dans quel ordre, et avec quelles règles.
@@ -134,4 +134,4 @@ qrg-eval report > rapport-mini-campagne.md
 
 ## Référence
 
-La spec vivante est un document Claude rattaché au compte michel.maudet@gmail.com : https://claude.ai/code/artifact/dfcad106-3a3e-4b7c-9194-3c305900d32f. Elle n'est lisible depuis ce compte que si Michel-Marie la partage ; sinon, `SPEC.md` (export du 16 octobre 2026) fait foi.
+La spec vivante est un document Claude rattaché au compte personnel du porteur. Elle n'est lisible depuis le compte du destinataire que si Michel-Marie la partage ; sinon, `SPEC.md` (export du 16 octobre 2026) fait foi.
