@@ -1,18 +1,17 @@
 /**
- * Launch of the published dsh 0.2.1-alpha.4 for the composition tests, on a
- * profile built from the shipped `web` template plus the QRG bundle, with a
- * test overlay as the last patch layer. The bundle goes through dsh's own
- * bundle loading, `engines.dsh` check included, through a profile
- * `node_modules` link to this package.
+ * Launch of the published dsh 0.2.1-alpha.4 for the composition tests, on
+ * the `qrg` profile as the installation procedure creates it, in a DSH home
+ * of the launch directory, with a test overlay as the last patch layer. The
+ * bundle goes through dsh's own bundle loading, `engines.dsh` check
+ * included, through the profile's `node_modules` link to this package.
  */
-import { mkdir, readFile, symlink, writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { PROFILE_TEMPLATES } from '@deepseek-ai/dsh-app-boot'
 import { runLoaderSmoke } from '@deepseek-ai/dsh-loader-smoke'
+import { BUNDLE_DIR, DSH_BIN, PROFILE_NAME, installProfile } from '../../src/profile.ts'
 
-const PROFILE = 'qrg-test'
 const PROCESS_TIMEOUT_MS = 90_000
 /** Vitest deadline of a test that launches dsh once. */
 export const LAUNCH_TEST_TIMEOUT_MS = PROCESS_TIMEOUT_MS + 15_000
@@ -20,8 +19,6 @@ export const LAUNCH_TEST_TIMEOUT_MS = PROCESS_TIMEOUT_MS + 15_000
 const CANARY_VERSION_ENV = 'QRG_DSH_CANARY_VERSION'
 
 const require = createRequire(import.meta.url)
-const dshBin = join(dirname(require.resolve('@deepseek-ai/dsh/package.json')), 'lib', 'bin.js')
-const bundleDir = fileURLToPath(new URL('../..', import.meta.url))
 const repoTsconfig = fileURLToPath(new URL('../../../../tsconfig.json', import.meta.url))
 
 interface PackageManifest {
@@ -45,21 +42,6 @@ async function readManifest(path: string): Promise<PackageManifest> {
   return JSON.parse(await readFile(path, 'utf8')) as PackageManifest
 }
 
-/** Create the profile the way `dsh plugin add` leaves it from the shipped `web` template, with the bundle linked instead of installed. */
-async function writeProfile(profileDir: string, bundle: PackageManifest): Promise<void> {
-  const web = PROFILE_TEMPLATES['web']
-  if (web === undefined) throw new Error('dsh ships no web profile template')
-  await mkdir(join(profileDir, 'node_modules', dirname(bundle.name)), { recursive: true })
-  await symlink(bundleDir, join(profileDir, 'node_modules', bundle.name), 'dir')
-  await writeFile(join(profileDir, 'package.json'), JSON.stringify({
-    name: `dsh-profile-${PROFILE}`,
-    private: true,
-    dependencies: { [bundle.name]: `link:${bundleDir}` },
-    dsh: { profile: { bundles: [...web.bundles, bundle.name] } },
-  }, undefined, 2))
-  await writeFile(join(profileDir, 'cordis.patch.yml'), '[]\n')
-}
-
 /**
  * Grant the bundle and qrg-router the exact exemption `dsh plugin allow-version`
  * gives: the canary measures API compatibility, not the version gate it
@@ -77,11 +59,11 @@ async function allowCanaryVersion(profileDir: string, bundle: PackageManifest, c
  * @returns the output of dsh, which exited with code 0.
  */
 export async function launchQrgProfile(options: LaunchOptions): Promise<{ stdout: string, stderr: string }> {
-  const profileDir = join(options.cwd, '.dsh', 'profiles', PROFILE)
-  const bundle = await readManifest(join(bundleDir, 'package.json'))
-  await writeProfile(profileDir, bundle)
+  const profileDir = await installProfile(join(options.cwd, '.dsh'))
   const canaryVersion = process.env[CANARY_VERSION_ENV]
-  if (canaryVersion !== undefined && canaryVersion !== '') await allowCanaryVersion(profileDir, bundle, canaryVersion)
+  if (canaryVersion !== undefined && canaryVersion !== '') {
+    await allowCanaryVersion(profileDir, await readManifest(join(BUNDLE_DIR, 'package.json')), canaryVersion)
+  }
   const overlay = join(options.cwd, 'test.patch.yml')
   // JSON is valid YAML; absolute plugin paths are anchored as file URLs.
   await writeFile(overlay, JSON.stringify(options.overlay))
@@ -89,10 +71,10 @@ export async function launchQrgProfile(options: LaunchOptions): Promise<{ stdout
     label: options.label,
     cwd: options.cwd,
     mode: 'lib',
-    binScript: dshBin,
-    libBinScript: dshBin,
+    binScript: DSH_BIN,
+    libBinScript: DSH_BIN,
     configPath: overlay,
-    binArgs: ['--profile', PROFILE, '--patch', overlay, '--host', '127.0.0.1', '--port', '0', '--no-open'],
+    binArgs: ['--profile', PROFILE_NAME, '--patch', overlay, '--host', '127.0.0.1', '--port', '0', '--no-open'],
     tsconfigPath: repoTsconfig,
     processTimeoutMs: PROCESS_TIMEOUT_MS,
     env: {
