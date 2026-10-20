@@ -18,7 +18,7 @@ La gateway est déclarée comme fournisseur compatible OpenAI (`notes/HANDOFF.md
 
 Le 18 octobre 2026, la clé ouvrait aussi `nox-4b` et trois routes d'embedding (`bge-multilingual-gemma2`, `bge-m3`, `qwen3-embedding-8b`), sans rôle au lot 1 : la clé a été restreinte le même jour à `qwen3.8` (décision du 18 octobre 2026).
 
-Le profil `qrg` ne porte que la référence de la clé, jamais sa valeur ; la structure suit `docs/user/guide/providers.md` de DSH :
+Le profil `qrg` ne porte que la référence de la clé, jamais sa valeur. La route est déclarée dans `packages/bundle/profile.patch.yml`, second fichier de patch du bundle et couche de patch du profil ; la structure suit `docs/user/guide/providers.md` de DSH :
 
 ```yaml
 - id: llm-pi-ai
