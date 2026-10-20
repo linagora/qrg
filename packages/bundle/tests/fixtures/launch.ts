@@ -11,6 +11,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runLoaderSmoke } from '@deepseek-ai/dsh-loader-smoke'
 import { BUNDLE_DIR, DSH_BIN, PROFILE_NAME, installProfile } from '../../src/profile.ts'
+import type { ProbeReport } from './probe.ts'
 
 const PROCESS_TIMEOUT_MS = 90_000
 /** Vitest deadline of a test that launches dsh once. */
@@ -18,7 +19,15 @@ export const LAUNCH_TEST_TIMEOUT_MS = PROCESS_TIMEOUT_MS + 15_000
 /** Set by the DSH canary job to the newer dsh version it installed in place of the pinned one. */
 const CANARY_VERSION_ENV = 'QRG_DSH_CANARY_VERSION'
 
+/**
+ * Without DSH_TELEMETRY_DISABLED, which the launches set by default: the
+ * profile must cut telemetry by itself. Should it fail to, the exporter
+ * would aim at a closed local port.
+ */
+export const TELEMETRY_SWITCH_UNSET = { DSH_TELEMETRY_DISABLED: undefined, DSH_TELEMETRY_OTLP_URL: 'http://127.0.0.1:9/v1/logs' }
+
 const require = createRequire(import.meta.url)
+const probePath = fileURLToPath(new URL('probe.ts', import.meta.url))
 const repoTsconfig = fileURLToPath(new URL('../../../../tsconfig.json', import.meta.url))
 
 interface PackageManifest {
@@ -36,6 +45,14 @@ export interface LaunchOptions {
   overlay: readonly object[]
   /** Environment variables to set, or to clear with `undefined`. */
   env?: Record<string, string | undefined>
+  /** Change the installed profile before dsh loads it. */
+  prepareProfile?: (profileDir: string) => Promise<void>
+}
+
+/** What a launch with the probe row leaves. */
+export interface ProbedLaunch {
+  stderr: string
+  report: ProbeReport
 }
 
 async function readManifest(path: string): Promise<PackageManifest> {
@@ -64,6 +81,7 @@ export async function launchQrgProfile(options: LaunchOptions): Promise<{ stdout
   if (canaryVersion !== undefined && canaryVersion !== '') {
     await allowCanaryVersion(profileDir, await readManifest(join(BUNDLE_DIR, 'package.json')), canaryVersion)
   }
+  await options.prepareProfile?.(profileDir)
   const overlay = join(options.cwd, 'test.patch.yml')
   // JSON is valid YAML; absolute plugin paths are anchored as file URLs.
   await writeFile(overlay, JSON.stringify(options.overlay))
@@ -88,4 +106,19 @@ export async function launchQrgProfile(options: LaunchOptions): Promise<{ stdout
       ...options.env,
     },
   })
+}
+
+/**
+ * Launch dsh on the QRG profile once with the probe row, which reports what
+ * the composition mounted.
+ * @param options - the launch; the probe row joins the end of its overlay.
+ * @returns the output of dsh and the probe report.
+ */
+export async function probeProfile(options: LaunchOptions): Promise<ProbedLaunch> {
+  const output = join(options.cwd, 'probe.json')
+  const { stderr } = await launchQrgProfile({
+    ...options,
+    overlay: [...options.overlay, { insert: [{ id: 'qrg-composition-probe', name: probePath, config: { output } }] }],
+  })
+  return { stderr, report: JSON.parse(await readFile(output, 'utf8')) as ProbeReport }
 }
