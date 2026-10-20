@@ -60,7 +60,8 @@ function leavesWorkspace(path: string): boolean {
  * @param value - the arguments as the lead model sent them.
  * @returns the descriptor, rebuilt from its declared fields only: the
  *   parameter root stays open, as every DSH tool's does.
- * @throws ToolArgsError listing every violation.
+ * @throws ToolArgsError listing the schema violations, or else every
+ *   violation of the blank and scope checks.
  */
 export function parseTask(value: unknown): TaskDescriptor {
   const schemaViolations = validateArgs(TASK_PARAMETERS, value)
