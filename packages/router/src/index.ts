@@ -86,7 +86,9 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
  */
 async function runRecorded(ctx: Context, delegations: Delegations, task: TaskDescriptor, decision: RoutingDecision, parent: Agent, signal: AbortSignal): Promise<string> {
   const id = randomUUID()
-  const { description: _description, ...routing } = task
+  // Picked by name, so that a text field added to the descriptor stays out.
+  const { intent, scope, interactive } = task
+  const routing = { intent, ...(scope === undefined ? {} : { scope }), interactive }
   // Written first: no delegation runs without its record.
   await delegations.put(id, { task: routing, decision, outcome: 'running' })
   let outcome = 'error'
