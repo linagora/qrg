@@ -171,4 +171,14 @@ describe('route_and_delegate in the real composition', () => {
     const authorizations = run.requests.map(request => request.headers.authorization)
     expect(new Set(authorizations)).toEqual(new Set([`Bearer ${GATEWAY_KEY}`]))
   })
+
+  it('records each delegation with its decision, child and outcome, without the task text', () => {
+    const { children, registry } = run.report
+    expect(children.map(child => child.stopReason)).toEqual(['error', 'completed'])
+    const decision = { agent: 'native', provider: 'linagora', model: 'qwen3.8' }
+    expect(registry).toEqual([
+      { task: { intent: 'tests', interactive: false }, decision, childSessionId: children[0]?.id, outcome: 'error' },
+      { task: { intent: 'documentation', scope: TASK.scope, interactive: false }, decision, childSessionId: children[1]?.id, outcome: 'completed' },
+    ])
+  })
 })
