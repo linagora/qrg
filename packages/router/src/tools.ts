@@ -21,7 +21,7 @@ export const inject = ['tools', 'qrgRouter']
 export function apply(ctx: Context): void {
   ctx.tools.register(defineTool({
     name: 'route_and_delegate',
-    description: 'Delegate a self-contained task to an agent chosen by the routing policy of this workspace, and wait for its answer. The policy picks the agent and its model from the task descriptor. The delegated agent does not see this conversation and works in the same workspace.',
+    description: 'Delegate a self-contained task to an agent chosen by the routing policy of this workspace, and wait for its answer. The delegated agent does not see this conversation and works in the same workspace.',
     parameters: TASK_PARAMETERS,
     output: {
       schema: { type: 'string' },
