@@ -211,6 +211,8 @@ Un outil `explain_route` permet à l'utilisateur de demander pourquoi une tâche
 
 Le plugin traduit chaque `RoutingDecision` en appel à l'API sous-agents de DSH. Il conserve dans son stockage (`ctx.storageDomain`) un registre qui lie tâche, décision et session enfant, pour pouvoir reprendre et itérer ; le journal de session de DSH n'accepte pas d'événements libres.
 
+Au lot 1, l'enfant natif travaille dans le répertoire courant de l'agent qui délègue, que DSH retient quand la délégation ne fixe pas de `cwd` ; c'est celui de la racine quand elle délègue elle-même. C'est l'hypothèse posée au découpage du ticket #5, sans décision à ce jour ; le worktree par enfant qui écrit relève du lot 2 (L-06 et L-07). Tant que la politique à règles (#10) n'est pas branchée, la décision se réduit à son repli : un agent natif sur `qwen3.8`.
+
 | Cible | Fournisseur DSH | Choix du modèle | Itérations |
 | --- | --- | --- | --- |
 | Agent natif | `dsh-subagent-spawn-in-process`, avec `cwd` (worktree) et `agentPreset` (outils de l'enfant, dont `ask_user`) | `agentOptions.provider` et `model` vers l'AI Gateway (Qwen, Mistral, GLM, DeepSeek hébergé) | Session continuable : `sendMessage` depuis le parent vivant, `prompt` depuis le navigateur |
@@ -232,7 +234,7 @@ Le plugin traduit chaque `RoutingDecision` en appel à l'API sous-agents de DSH.
 3. Le plugin relaie : vers un enfant natif par `sendMessage` depuis le parent vivant, ou par `prompt` depuis le navigateur ; vers Claude Code par une nouvelle exécution du fork avec `resume`, DSH n'acceptant aucun message ultérieur vers un fournisseur externe.
 4. L'enfant reprend avec tout son contexte.
 
-Le modèle est toujours passé explicitement à chaque délégation. Cela neutralise le bug connu où les enfants héritent d'un modèle périmé ([discussion #4065](https://github.com/deepseek-ai/deepseek-harness/discussions/4065)) : sans option, un enfant prend la route de la dernière requête du parent. Le modèle est ensuite figé dans le descripteur de l'enfant ; en changer impose un nouvel enfant.
+La route et le modèle sont toujours passés explicitement à chaque délégation (`agentOptions`). Cela neutralise le bug connu où les enfants héritent d'un modèle périmé ([discussion #4065](https://github.com/deepseek-ai/deepseek-harness/discussions/4065)) : sans option, un enfant prend la route de la dernière requête du parent. Le modèle est ensuite figé dans le descripteur de l'enfant ; en changer impose un nouvel enfant.
 
 ## Composant 3 : canal d'interaction utilisateur
 
