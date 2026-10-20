@@ -7,14 +7,13 @@
  * Loader ignore them.
  * @module @linagora/qrg-router
  */
-import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-storage-domain'
 import type { SubagentResult } from '@deepseek-ai/dsh-subagent'
 import z from '@deepseek-ai/schemastery'
-import { registryDomain } from './registry.ts'
-import type { Delegations, RoutingDecision } from './registry.ts'
+import { beginDelegation, registryDomain } from './registry.ts'
+import type { Delegations, Outcome, RoutingDecision } from './registry.ts'
 import type { TaskDescriptor } from './task.ts'
 
 /** What the host row offers its tools row. */
@@ -85,18 +84,12 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
  * @returns the text of the delegated agent's final answer.
  */
 async function runRecorded(ctx: Context, delegations: Delegations, task: TaskDescriptor, decision: RoutingDecision, parent: Agent, signal: AbortSignal): Promise<string> {
-  const id = randomUUID()
-  // Picked by name, so that a text field added to the descriptor stays out.
-  const { intent, scope, interactive } = task
-  const routing = { intent, ...(scope === undefined ? {} : { scope }), interactive }
   // Written first: no delegation runs without its record.
-  await delegations.put(id, { task: routing, decision, outcome: 'running' })
-  let outcome = 'error'
+  const entry = await beginDelegation(delegations, task, decision)
+  let outcome: Outcome = 'error'
   try {
-    const result = await runNative(ctx, task, decision, parent, signal, (childSessionId) => {
-      void delegations.update(id, record => ({ ...record, childSessionId })).catch((error: unknown) => {
-        ctx.logger.warn(`qrg-router: delegation ${id} lost its child session: ${String(error)}`)
-      })
+    const result = await runNative(ctx, task, decision, parent, signal, childSessionId => {
+      void warnOnFailure(ctx, entry.attach(childSessionId), `delegation ${entry.id} lost its child session`)
     })
     outcome = result.stopReason
     if (result.stopReason !== 'completed') {
@@ -105,9 +98,22 @@ async function runRecorded(ctx: Context, delegations: Delegations, task: TaskDes
     }
     return result.output.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n')
   } finally {
-    await delegations.update(id, record => ({ ...record, outcome })).catch((error: unknown) => {
-      ctx.logger.warn(`qrg-router: delegation ${id} lost its outcome ${outcome}: ${String(error)}`)
-    })
+    await warnOnFailure(ctx, entry.finish(outcome), `delegation ${entry.id} lost its outcome ${outcome}`)
+  }
+}
+
+/**
+ * Log the failure of a step that must not fail the delegation.
+ * @param ctx - the host row's context.
+ * @param step - the step's promise.
+ * @param failure - what the failure means, for the log.
+ * @returns a promise that settles with the step and never rejects.
+ */
+async function warnOnFailure(ctx: Context, step: Promise<unknown>, failure: string): Promise<void> {
+  try {
+    await step
+  } catch (error) {
+    ctx.logger.warn(`qrg-router: ${failure}: ${String(error)}`)
   }
 }
 
@@ -119,10 +125,10 @@ async function runRecorded(ctx: Context, delegations: Delegations, task: TaskDes
  * @param decision - the gateway route and model.
  * @param parent - the delegating agent.
  * @param signal - the cancellation of the delegating tool call.
- * @param started - called with the child's session id once it exists.
+ * @param onChildSession - called with the child's session id once it exists.
  * @returns the child's result.
  */
-async function runNative(ctx: Context, task: TaskDescriptor, decision: RoutingDecision, parent: Agent, signal: AbortSignal, started: (childSessionId: string) => void): Promise<SubagentResult> {
+async function runNative(ctx: Context, task: TaskDescriptor, decision: RoutingDecision, parent: Agent, signal: AbortSignal, onChildSession: (childSessionId: string) => void): Promise<SubagentResult> {
   const maxDepth = ctx.subagents.resolveMaxDepth()
   const activation = await ctx.subagents.startActivation({
     provider: 'spawn',
@@ -138,12 +144,10 @@ async function runNative(ctx: Context, task: TaskDescriptor, decision: RoutingDe
     signal,
     delivery: 'caller',
   })
-  started(activation.childId)
+  onChildSession(activation.childId)
   // The start signal stops only the start; a published child stops through dispose.
   const stop = (): void => {
-    activation.dispose().catch((error: unknown) => {
-      ctx.logger.warn(`qrg-router: the delegated agent ${activation.childId} failed to stop: ${String(error)}`)
-    })
+    void warnOnFailure(ctx, activation.dispose(), `the delegated agent ${activation.childId} failed to stop`)
   }
   if (signal.aborted) stop()
   else signal.addEventListener('abort', stop, { once: true })
