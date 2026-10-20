@@ -1,7 +1,7 @@
 /**
  * The installation procedure of the README: `pnpm qrg:install` creates the
  * `qrg` profile in the DSH home once and never touches a profile that
- * exists.
+ * exists; `pnpm qrg` does not start dsh without it.
  */
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 const run = promisify(execFile)
 const installScript = fileURLToPath(new URL('../src/install.ts', import.meta.url))
+const launcherScript = fileURLToPath(new URL('../src/qrg.ts', import.meta.url))
 
 interface Outcome {
   code: number
@@ -72,5 +73,9 @@ describe('the installation procedure', () => {
     expect(await runScript(installScript, home)).toEqual({ code: 1, stdout: '', stderr: `qrg-install: the qrg profile already exists at ${dir}; nothing was changed\n` })
     expect(await readdir(join(home, 'profiles'))).toEqual(['qrg'])
     expect(await readdir(dir)).toEqual(['cordis.patch.yml'])
+  })
+
+  it('does not start dsh without the profile', async () => {
+    expect(await runScript(launcherScript, home)).toEqual({ code: 1, stdout: '', stderr: 'qrg: no qrg profile in the DSH home; create it with pnpm qrg:install\n' })
   })
 })
