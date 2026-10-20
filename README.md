@@ -6,8 +6,8 @@ Routage agent/modèle et interaction utilisateur pour [DeepSeek Harness](https:/
 
 Monorepo en workspace pnpm :
 
-- `packages/router` (`@linagora/qrg-router`) : plugin DSH scindé en deux lignes, la ligne hôte (moteur de décision, registre, appels aux sous-agents) et la ligne d'outils `@linagora/qrg-router/tools`, insérée dans les presets d'agent. Les deux sont encore vides.
-- `packages/bundle` (`@linagora/qrg-bundle`) : bundle de profil DSH. Son `cordis.patch.yml` monte la ligne hôte et insère la ligne d'outils dans les presets `standard` et `ptc`.
+- `packages/router` (`@linagora/qrg-router`) : plugin DSH scindé en deux lignes. La ligne d'outils `@linagora/qrg-router/tools`, insérée dans les presets d'agent, expose `route_and_delegate` et refuse un TaskDescriptor invalide. La ligne hôte décide où la tâche s'exécute, la confie à un agent DSH natif et l'inscrit dans le registre QRG, le domaine de stockage DSH `qrg_router`. Tant que la politique à règles n'est pas branchée, la décision se réduit à son repli : un agent natif sur le modèle de repli de la gateway.
+- `packages/bundle` (`@linagora/qrg-bundle`) : bundle de profil DSH. Son `cordis.patch.yml` déclare la route `linagora` de la LINAGORA AI Gateway, qui ne nomme que la variable de sa clé (`LINAGORA_API_KEY`), monte la ligne hôte et insère la ligne d'outils dans les presets `standard` et `ptc`.
 - `scripts/` : outillage des tests transverses et de la CI, dont le canari DSH.
 - `tests/` : tests transverses (épinglage de DSH, chaîne d'approvisionnement, canari).
 
@@ -29,6 +29,8 @@ pnpm check
 
 Le test de composition (`packages/bundle/tests/composition.test.ts`) lance le vrai `dsh` 0.2.1-alpha.4 installé dans `node_modules`, sur un profil temporaire tiré du gabarit `web` auquel le bundle QRG est lié, et vérifie que les deux lignes de `qrg-router` sont actives. Le processus démarre sans clé de modèle et sans télémétrie.
 
+Le test de délégation (`packages/bundle/tests/delegation.test.ts`) lance le même `dsh` contre une fausse gateway locale, avec une fausse clé confinée au processus enfant. Il vérifie que `route_and_delegate` est exposé, qu'un TaskDescriptor invalide est refusé sans délégation, que l'enfant reçoit le modèle décidé même après un changement du modèle par défaut, et que le registre garde une entrée par délégation, échec compris, sans le texte de la tâche.
+
 ## Épinglage de DSH
 
 QRG vise DSH 0.2.1-alpha.4, épinglée exactement : les API d'une alpha ne sont pas stables, et DSH saute au démarrage, sans erreur, un bundle dont `engines.dsh` ne couvre pas sa version. Toutes les dépendances `@deepseek-ai/dsh*` et tous les `engines.dsh` portent donc la même version exacte, ce que vérifie `tests/dsh-pin.test.ts`.
@@ -38,6 +40,7 @@ QRG vise DSH 0.2.1-alpha.4, épinglée exactement : les API d'une alpha ne sont 
 - les `engines.dsh` de `packages/router` et de `packages/bundle` ;
 - toutes les dépendances `@deepseek-ai/dsh*` ;
 - `@deepseek-ai/cordis` et `@deepseek-ai/cordis-plugin-loader`, alignés sur les versions que déclare la nouvelle version de `@deepseek-ai/dsh` ;
+- `zod` et `@deepseek-ai/schemastery` dans `packages/router`, alignés sur les versions que déclare la nouvelle version de `@deepseek-ai/dsh-storage-domain` : le schéma zod du registre doit être celui qu'attend `domainTable`, sinon tsc le refuse ;
 - les copies des presets `standard` et `ptc` dans `packages/bundle/cordis.patch.yml`, que `packages/bundle/tests/presets.test.ts` compare aux presets installés ;
 - le lockfile, par `pnpm install`.
 
