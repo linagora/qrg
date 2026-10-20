@@ -7,14 +7,16 @@ import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
 import { z } from 'zod'
 
-/** Where a delegated task runs, as the router decided it. */
-export interface Decision {
-  agent: 'native'
+const RoutingDecision = z.object({
+  agent: z.literal('native'),
   /** pi-ai route of the delegated agent. */
-  provider: string
+  provider: z.string(),
   /** Model of the delegated agent. */
-  model: string
-}
+  model: z.string(),
+})
+
+/** Where a delegated task runs, as the router decided it. */
+export type RoutingDecision = z.infer<typeof RoutingDecision>
 
 // Intent and outcome stay open strings: a record written before a value is
 // renamed must not make the whole domain fail to open.
@@ -27,11 +29,7 @@ const DelegationRecord = z.object({
     }).optional(),
     interactive: z.boolean(),
   }),
-  decision: z.object({
-    agent: z.literal('native'),
-    provider: z.string(),
-    model: z.string(),
-  }),
+  decision: RoutingDecision,
   /** Absent until the delegated agent's session exists. */
   childSessionId: z.string().optional(),
   /** `running`, then the child's stop reason, or `error` when it could not run. */

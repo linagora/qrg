@@ -14,7 +14,7 @@ import type {} from '@deepseek-ai/dsh-storage-domain'
 import type { SubagentResult } from '@deepseek-ai/dsh-subagent'
 import z from '@deepseek-ai/schemastery'
 import { registryDomain } from './registry.ts'
-import type { Decision, Delegations } from './registry.ts'
+import type { Delegations, RoutingDecision } from './registry.ts'
 import type { TaskDescriptor } from './task.ts'
 
 /** What the host row offers its tools row. */
@@ -67,7 +67,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   const delegations = registry.table('delegations')
   ctx.provide('qrgRouter', {
     delegate: (task, parent, signal) => {
-      const decision: Decision = { agent: 'native', provider: config.gateway, model: config.fallbackModel }
+      const decision: RoutingDecision = { agent: 'native', provider: config.gateway, model: config.fallbackModel }
       return runRecorded(ctx, delegations, task, decision, parent, signal)
     },
   })
@@ -84,7 +84,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
  * @param signal - the cancellation of the delegating tool call.
  * @returns the text of the delegated agent's final answer.
  */
-async function runRecorded(ctx: Context, delegations: Delegations, task: TaskDescriptor, decision: Decision, parent: Agent, signal: AbortSignal): Promise<string> {
+async function runRecorded(ctx: Context, delegations: Delegations, task: TaskDescriptor, decision: RoutingDecision, parent: Agent, signal: AbortSignal): Promise<string> {
   const id = randomUUID()
   const { description: _description, ...routing } = task
   // Written first: no delegation runs without its record.
@@ -120,7 +120,7 @@ async function runRecorded(ctx: Context, delegations: Delegations, task: TaskDes
  * @param started - called with the child's session id once it exists.
  * @returns the child's result.
  */
-async function runNative(ctx: Context, task: TaskDescriptor, decision: Decision, parent: Agent, signal: AbortSignal, started: (childSessionId: string) => void): Promise<SubagentResult> {
+async function runNative(ctx: Context, task: TaskDescriptor, decision: RoutingDecision, parent: Agent, signal: AbortSignal, started: (childSessionId: string) => void): Promise<SubagentResult> {
   const maxDepth = ctx.subagents.resolveMaxDepth()
   const activation = await ctx.subagents.startActivation({
     provider: 'spawn',
