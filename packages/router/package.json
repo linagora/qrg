@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "~3.18.5-alpha.2",
+    "yaml": "2.9.1",
     "zod": "4.4.3"
   },
   "peerDependencies": {
