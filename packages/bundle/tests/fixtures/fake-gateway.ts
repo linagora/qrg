@@ -60,6 +60,10 @@ export interface FakeGateway {
 
 /** Answer to a request beyond the script: an error the client does not retry. */
 const EXHAUSTED: GatewayReply = { status: 400, body: '{"error":{"message":"the fake gateway script is exhausted"}}' }
+
+/** Answer to a body that is not JSON, which no scripted reply consumes. */
+const MALFORMED: GatewayReply = { status: 400, body: '{"error":{"message":"the fake gateway expects a JSON body"}}' }
+
 const USAGE = '"usage":{"prompt_tokens":3,"completion_tokens":1}'
 
 /**
@@ -102,13 +106,21 @@ export function toolCallReply(name: string, args: object): GatewayReply {
 export async function startFakeGateway(script: readonly GatewayReply[]): Promise<FakeGateway> {
   const replies = [...script]
   const requests: GatewayRequest[] = []
+  const record = (headers: IncomingHttpHeaders, text: string): GatewayReply => {
+    let body: ChatCompletionRequest
+    try {
+      body = JSON.parse(text) as ChatCompletionRequest
+    } catch {
+      return MALFORMED
+    }
+    requests.push({ headers, body })
+    return replies.shift() ?? EXHAUSTED
+  }
   const server = createServer((request: IncomingMessage, response: ServerResponse) => {
     const chunks: Buffer[] = []
     request.on('data', (chunk: Buffer) => { chunks.push(chunk) })
     request.on('end', () => {
-      const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as ChatCompletionRequest
-      requests.push({ headers: request.headers, body })
-      const reply = replies.shift() ?? EXHAUSTED
+      const reply = record(request.headers, Buffer.concat(chunks).toString('utf8'))
       if ('status' in reply) {
         response.writeHead(reply.status, { 'content-type': 'application/json' })
         response.end(reply.body)
