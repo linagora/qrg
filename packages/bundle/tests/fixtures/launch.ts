@@ -27,6 +27,7 @@ const CANARY_VERSION_ENV = 'QRG_DSH_CANARY_VERSION'
 export const TELEMETRY_SWITCH_UNSET = { DSH_TELEMETRY_DISABLED: undefined, DSH_TELEMETRY_OTLP_URL: 'http://127.0.0.1:9/v1/logs' }
 
 const require = createRequire(import.meta.url)
+const launcherScript = fileURLToPath(new URL('../../src/qrg.ts', import.meta.url))
 const probePath = fileURLToPath(new URL('probe.ts', import.meta.url))
 const repoTsconfig = fileURLToPath(new URL('../../../../tsconfig.json', import.meta.url))
 
@@ -47,6 +48,8 @@ export interface LaunchOptions {
   env?: Record<string, string | undefined>
   /** Change the installed profile before dsh loads it. */
   prepareProfile?: (profileDir: string) => Promise<void>
+  /** Start dsh through the `pnpm qrg` launcher, which names the profile itself. */
+  throughLauncher?: boolean
 }
 
 /** What a launch with the probe row leaves. */
@@ -85,14 +88,16 @@ export async function launchQrgProfile(options: LaunchOptions): Promise<{ stdout
   const overlay = join(options.cwd, 'test.patch.yml')
   // JSON is valid YAML; absolute plugin paths are anchored as file URLs.
   await writeFile(overlay, JSON.stringify(options.overlay))
+  const script = options.throughLauncher === true ? launcherScript : DSH_BIN
+  const profileArgs = options.throughLauncher === true ? [] : ['--profile', PROFILE_NAME]
   return runLoaderSmoke({
     label: options.label,
     cwd: options.cwd,
     mode: 'lib',
-    binScript: DSH_BIN,
-    libBinScript: DSH_BIN,
+    binScript: script,
+    libBinScript: script,
     configPath: overlay,
-    binArgs: ['--profile', PROFILE_NAME, '--patch', overlay, '--host', '127.0.0.1', '--port', '0', '--no-open'],
+    binArgs: [...profileArgs, '--patch', overlay, '--host', '127.0.0.1', '--port', '0', '--no-open'],
     tsconfigPath: repoTsconfig,
     processTimeoutMs: PROCESS_TIMEOUT_MS,
     env: {
