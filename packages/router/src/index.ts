@@ -67,28 +67,36 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   ctx.provide('qrgRouter', {
     delegate: (task, parent, signal) => {
       const decision: RoutingDecision = { agent: 'native', provider: config.gateway, model: config.fallbackModel }
-      return runRecorded(ctx, delegations, task, decision, parent, signal)
+      return runRecorded(ctx, delegations, { task, decision, parent, signal })
     },
   })
 }
 
+/** One delegation, once decided. */
+interface Delegation {
+  /** The TaskDescriptor. */
+  task: TaskDescriptor
+  /** Where the task runs. */
+  decision: RoutingDecision
+  /** The delegating agent. */
+  parent: Agent
+  /** The cancellation of the delegating tool call. */
+  signal: AbortSignal
+}
+
 /**
- * Run a task where the router decided, under a registry record that ends
- * with the outcome.
+ * Run a delegation under a registry record that ends with the outcome.
  * @param ctx - the host row's context.
  * @param delegations - the registry table.
- * @param task - the TaskDescriptor.
- * @param decision - where the task runs.
- * @param parent - the delegating agent.
- * @param signal - the cancellation of the delegating tool call.
+ * @param delegation - the task, where it runs and for whom.
  * @returns the text of the delegated agent's final answer.
  */
-async function runRecorded(ctx: Context, delegations: Delegations, task: TaskDescriptor, decision: RoutingDecision, parent: Agent, signal: AbortSignal): Promise<string> {
+async function runRecorded(ctx: Context, delegations: Delegations, delegation: Delegation): Promise<string> {
   // Written first: no delegation runs without its record.
-  const entry = await beginDelegation(delegations, task, decision)
+  const entry = await beginDelegation(delegations, delegation.task, delegation.decision)
   let outcome: Outcome = 'error'
   try {
-    const result = await runNative(ctx, task, decision, parent, signal, childSessionId => {
+    const result = await runNative(ctx, delegation, childSessionId => {
       void warnOnFailure(ctx, entry.attach(childSessionId), `delegation ${entry.id} lost its child session`)
     })
     outcome = result.stopReason
@@ -118,17 +126,15 @@ async function warnOnFailure(ctx: Context, step: Promise<unknown>, failure: stri
 }
 
 /**
- * Run a task on a native agent of the gateway, as a child of the delegating
- * agent in its directory.
+ * Run a delegation on a native agent of the gateway, as a child of the
+ * delegating agent in its directory.
  * @param ctx - the host row's context.
- * @param task - the TaskDescriptor.
- * @param decision - the gateway route and model.
- * @param parent - the delegating agent.
- * @param signal - the cancellation of the delegating tool call.
+ * @param delegation - the task, the gateway route and model, and for whom.
  * @param onChildSession - called with the child's session id once it exists.
  * @returns the child's result.
  */
-async function runNative(ctx: Context, task: TaskDescriptor, decision: RoutingDecision, parent: Agent, signal: AbortSignal, onChildSession: (childSessionId: string) => void): Promise<SubagentResult> {
+async function runNative(ctx: Context, delegation: Delegation, onChildSession: (childSessionId: string) => void): Promise<SubagentResult> {
+  const { task, decision, parent, signal } = delegation
   const maxDepth = ctx.subagents.resolveMaxDepth()
   const activation = await ctx.subagents.startActivation({
     provider: 'spawn',
