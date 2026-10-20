@@ -41,7 +41,6 @@ export interface ChatCompletionRequest {
 
 /** One request received by the fake gateway. */
 export interface GatewayRequest {
-  path: string
   headers: IncomingHttpHeaders
   body: ChatCompletionRequest
 }
@@ -61,7 +60,6 @@ export interface FakeGateway {
 
 /** Answer to a request beyond the script: an error the client does not retry. */
 const EXHAUSTED: GatewayReply = { status: 400, body: '{"error":{"message":"the fake gateway script is exhausted"}}' }
-
 const USAGE = '"usage":{"prompt_tokens":3,"completion_tokens":1}'
 
 /**
@@ -109,7 +107,7 @@ export async function startFakeGateway(script: readonly GatewayReply[]): Promise
     request.on('data', (chunk: Buffer) => { chunks.push(chunk) })
     request.on('end', () => {
       const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as ChatCompletionRequest
-      requests.push({ path: request.url ?? '', headers: request.headers, body })
+      requests.push({ headers: request.headers, body })
       const reply = replies.shift() ?? EXHAUSTED
       if ('status' in reply) {
         response.writeHead(reply.status, { 'content-type': 'application/json' })

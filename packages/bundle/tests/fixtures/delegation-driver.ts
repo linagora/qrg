@@ -2,9 +2,8 @@
  * Test-only Loader row inserted by the delegation test overlay. Once the dsh
  * launcher commits a successful startup, it runs the configured conversations
  * one after another, each in a new session, through the session controller
- * the web client calls. It then writes the sessions, the settled children
- * and the QRG registry to `config.output`, and asks the launcher for a
- * bounded exit.
+ * the web client calls. It then writes the settled children and the QRG
+ * registry to `config.output`, and asks the launcher for a bounded exit.
  */
 import { randomUUID } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
@@ -28,8 +27,6 @@ export interface Config {
 
 /** What the driver writes to `config.output`. */
 export interface DriverReport {
-  /** The session of each conversation, in order. */
-  sessions: string[]
   /** Every settled child, in settlement order. */
   children: { id: string, stopReason: string }[]
   /** The records of the QRG registry, or null when qrg-router did not open it. */
@@ -55,8 +52,8 @@ export function apply(ctx: Context, config: Config): void {
   ctx.on('subagent/end', info => { children.push({ id: info.id, stopReason: info.stopReason }) })
   ctx.effect(() => ready.onReady(() => {
     void drive(ctx, config.conversations).then(
-      (sessions) => {
-        const report: DriverReport = { sessions, children, registry: readRegistry(ctx) }
+      () => {
+        const report: DriverReport = { children, registry: readRegistry(ctx) }
         writeFileSync(config.output, JSON.stringify(report))
         exit(0)
       },
@@ -69,11 +66,9 @@ export function apply(ctx: Context, config: Config): void {
   }), 'qrg-delegation-driver.drive')
 }
 
-async function drive(ctx: Context, conversations: Step[][]): Promise<string[]> {
-  const sessions: string[] = []
+async function drive(ctx: Context, conversations: Step[][]): Promise<void> {
   for (const steps of conversations) {
     const { sessionId } = await ctx.sessionController.create({})
-    sessions.push(sessionId)
     for (const step of steps) {
       if ('selectModel' in step) {
         await ctx.sessionController.selectModel({ sessionId, ...step.selectModel })
@@ -90,7 +85,6 @@ async function drive(ctx: Context, conversations: Step[][]): Promise<string[]> {
       await agent.whenIdle()
     }
   }
-  return sessions
 }
 
 function readRegistry(ctx: Context): unknown[] | null {
