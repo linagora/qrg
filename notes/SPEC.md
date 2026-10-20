@@ -40,7 +40,7 @@ Aucune intégration avec Paperclip : les deux démarches restent indépendantes,
 
 ## Décisions
 
-Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté trois, toujours le 16 octobre, puis deux le 17 octobre et un le 18 octobre ; les questions ouvertes des tickets #10 et #22 en ont ajouté deux le 18 octobre, le squelette du monorepo (#4) deux le même jour, sa revue deux le 19 octobre et le premier chemin de délégation (#5) deux le même jour. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre », « 17 octobre », « 18 octobre » ou « 19 octobre »).
+Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté trois, toujours le 16 octobre, puis deux le 17 octobre et un le 18 octobre ; les questions ouvertes des tickets #10 et #22 en ont ajouté deux le 18 octobre, le squelette du monorepo (#4) deux le même jour, sa revue deux le 19 octobre et le premier chemin de délégation (#5) trois le même jour. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre », « 17 octobre », « 18 octobre » ou « 19 octobre »).
 
 | Sujet | Décision | Conséquence |
 | --- | --- | --- |
@@ -84,6 +84,7 @@ Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus stru
 | Versions rejouées par le canari (19 octobre) | La dernière version publiée de DSH qui a passé le délai de 24 h, alpha, rc ou finale, et non plus la dernière alpha | DSH est passé des alphas aux rc le 17 octobre (`latest` en 0.2.1-rc.2) : limité aux alphas, le canari serait resté sur 0.2.1-alpha.5. La montée de l'épinglage se décidera au vu de son résultat |
 | Périmètre du `TaskDescriptor` (19 octobre) | `scope` réduit à `paths` et `language`, chemins relatifs à l'espace de travail, sans désignation de dépôt | Un chemin absolu ou qui contient `..` est refusé sans délégation (D-01) |
 | Intentions du `TaskDescriptor` (19 octobre) | Valeurs en anglais : `refactor`, `review`, `tests`, `documentation`, `specification`, `debugging` et `small-fix` | Les règles de la politique citent ces valeurs ; `small-fix` remplace `petit-correctif` |
+| Contenu du registre (19 octobre) | Une entrée par délégation : intention, périmètre, interactivité, décision, session enfant et issue, sans le texte de la tâche | Le texte de la tâche ne vit que dans les journaux de session de DSH, celui de la racine et celui de l'enfant |
 
 **Contraintes liées aux abonnements individuels** ([conditions Anthropic](https://code.claude.com/docs/en/legal-and-compliance))
 
@@ -209,7 +210,7 @@ Un outil `explain_route` permet à l'utilisateur de demander pourquoi une tâche
 
 ## Composant 2 : délégation et sessions continuables
 
-Le plugin traduit chaque `RoutingDecision` en appel à l'API sous-agents de DSH. Il conserve dans son stockage (`ctx.storageDomain`) un registre qui lie tâche, décision et session enfant, pour pouvoir reprendre et itérer ; le journal de session de DSH n'accepte pas d'événements libres.
+Le plugin traduit chaque `RoutingDecision` en appel à l'API sous-agents de DSH. Il conserve dans son stockage (`ctx.storageDomain`) un registre qui lie tâche, décision, session enfant et issue, pour pouvoir reprendre et itérer ; le journal de session de DSH n'accepte pas d'événements libres. Le registre garde les champs de routage de la tâche, jamais son texte (décision du 19 octobre 2026).
 
 Au lot 1, l'enfant natif travaille dans le répertoire courant de l'agent qui délègue, que DSH retient quand la délégation ne fixe pas de `cwd` ; c'est celui de la racine quand elle délègue elle-même. C'est l'hypothèse posée au découpage du ticket #5, sans décision à ce jour ; le worktree par enfant qui écrit relève du lot 2 (L-06 et L-07). Tant que la politique à règles (#10) n'est pas branchée, la décision se réduit à son repli : un agent natif sur `qwen3.8`.
 
