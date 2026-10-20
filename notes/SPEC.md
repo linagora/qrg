@@ -40,7 +40,7 @@ Aucune intégration avec Paperclip : les deux démarches restent indépendantes,
 
 ## Décisions
 
-Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté trois, toujours le 16 octobre, puis deux le 17 octobre et un le 18 octobre ; les questions ouvertes des tickets #10 et #22 en ont ajouté deux le 18 octobre, le squelette du monorepo (#4) deux le même jour et sa revue deux le 19 octobre. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre », « 17 octobre », « 18 octobre » ou « 19 octobre »).
+Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus structurant est l'accès à Claude par abonnements individuels. Le second passage du lot 0 en a ajouté neuf le 16 octobre 2026, et la démonstration du lot 0 quatre autres le même jour ; les préalables du lot 1 en ont ajouté trois, toujours le 16 octobre, puis deux le 17 octobre et un le 18 octobre ; les questions ouvertes des tickets #10 et #22 en ont ajouté deux le 18 octobre, le squelette du monorepo (#4) deux le même jour, sa revue deux le 19 octobre et le premier chemin de délégation (#5) deux le même jour. Tous ont été rendus par Michel-Marie Maudet comme porteur et comme Security Officer (lignes marquées « 16 octobre », « 17 octobre », « 18 octobre » ou « 19 octobre »).
 
 | Sujet | Décision | Conséquence |
 | --- | --- | --- |
@@ -82,6 +82,8 @@ Treize arbitrages rendus le 15 octobre 2026 fixent le périmètre ; le plus stru
 | Canari DSH (18 octobre) | Aucune exemption au délai de 24 h de pnpm pour `@deepseek-ai/*` | Le job rejoue une version au plus tôt un jour après sa publication ; la protection contre un paquet compromis reste entière |
 | Mode strict de pnpm (19 octobre) | `minimumReleaseAgeStrict: true` dans le `pnpm-workspace.yaml` permanent, et un test qui fait échouer la CI si ce fichier exempte un paquet `@deepseek-ai/*` | En mode loose, le défaut de pnpm 11, une résolution qui choisit une version de moins de 24 h l'ajoute seule aux exemptions du fichier, que les installations figées respectent ensuite ; en mode strict, pnpm demande un accord en terminal et échoue en CI |
 | Versions rejouées par le canari (19 octobre) | La dernière version publiée de DSH qui a passé le délai de 24 h, alpha, rc ou finale, et non plus la dernière alpha | DSH est passé des alphas aux rc le 17 octobre (`latest` en 0.2.1-rc.2) : limité aux alphas, le canari serait resté sur 0.2.1-alpha.5. La montée de l'épinglage se décidera au vu de son résultat |
+| Périmètre du `TaskDescriptor` (19 octobre) | `scope` réduit à `paths` et `language`, chemins relatifs à l'espace de travail, sans désignation de dépôt | Un chemin absolu ou qui contient `..` est refusé sans délégation (D-01) |
+| Intentions du `TaskDescriptor` (19 octobre) | Valeurs en anglais : `refactor`, `review`, `tests`, `documentation`, `specification`, `debugging` et `small-fix` | Les règles de la politique citent ces valeurs ; `small-fix` remplace `petit-correctif` |
 
 **Contraintes liées aux abonnements individuels** ([conditions Anthropic](https://code.claude.com/docs/en/legal-and-compliance))
 
@@ -118,11 +120,13 @@ Le routage sort du LLM orchestrateur. Un fournisseur de décision (`DecisionProv
 
 **Entrée (`TaskDescriptor`)**
 
-- `intent` : type de tâche (refonte, revue, tests, documentation, spécification, débogage)
-- `description` et périmètre estimé (dépôt, fichiers, langage)
-- `sensitivity` : classe de données, qui interdit certains modèles
+- `intent` : type de tâche, parmi `refactor`, `review`, `tests`, `documentation`, `specification`, `debugging` et `small-fix` (décision du 19 octobre 2026)
+- `description` : la tâche, rédigée pour se suffire, l'agent délégué ne voyant pas la conversation
+- `scope`, facultatif : périmètre estimé, avec `paths`, fichiers ou répertoires relatifs à l'espace de travail, et `language` (décision du 19 octobre 2026) ; absent, il vaut le dépôt entier
 - `interactive` : la tâche demande-t-elle un dialogue avec l'utilisateur
-- `constraints` : budget, latence, modèle imposé par l'utilisateur
+- `constraints` : budget, latence, modèle imposé par l'utilisateur ; `route_and_delegate` ne le lit pas encore
+
+La classe de sensibilité n'en fait pas partie : le plugin la calcule lui-même (voir plus bas), jamais à partir de ce que dit un modèle.
 
 **Sortie (`RoutingDecision`)**
 
@@ -186,7 +190,7 @@ rules:
     when: { intent: specification, interactive: true }
     route: { agent: claude-code, model: claude-opus, permissionMode: plan, skills: [grill-me] }
   - id: taches-mecaniques
-    when: { intent: [tests, documentation, petit-correctif] }
+    when: { intent: [tests, documentation, small-fix] }
     route: { agent: native, model: qwen-local }
 default:
   chain: [judge, external]
