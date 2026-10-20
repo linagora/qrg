@@ -2,22 +2,27 @@
   "name": "@linagora/qrg-bundle",
   "version": "0.0.0",
   "private": true,
-  "description": "QRG profile bundle for DSH: mounts the qrg-router host row and inserts its tools row in the standard and ptc presets",
+  "description": "QRG profile bundle for DSH: mounts the qrg-router host row, inserts its tools row in the standard and ptc presets, and cuts the flows to DeepSeek",
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./profile.patch.yml": "./profile.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "profile.patch.yml"
   ],
   "engines": {
     "dsh": "0.2.1-alpha.4"
   },
   "dsh": {
     "bundle": {
-      "patch": "./cordis.patch.yml"
+      "patch": [
+        "./cordis.patch.yml",
+        "./profile.patch.yml"
+      ]
     }
   },
   "dependencies": {
