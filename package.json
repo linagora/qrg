@@ -10,6 +10,7 @@
   },
   "scripts": {
     "check": "pnpm run typecheck && pnpm run lint && pnpm run test",
+    "qrg:install": "node packages/bundle/src/install.ts",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "oxlint --deny-warnings",
     "test": "vitest run"
