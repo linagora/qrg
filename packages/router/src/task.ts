@@ -29,7 +29,7 @@ export const TASK_PARAMETERS = {
       paths: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Files or directories the task touches, relative to the workspace root; a directory covers everything under it.',
+        description: 'Files or directories the task touches, relative to the workspace root, without wildcards; a directory covers everything under it.',
       },
       language: { type: 'string', description: 'Main programming language of the task.' },
     },
@@ -72,6 +72,8 @@ export function parseTask(value: unknown): TaskDescriptor {
   scope?.paths?.forEach((path, index) => {
     if (path === '') violations.push(`"scope.paths[${index}]" must not be empty`)
     else if (leavesWorkspace(path)) violations.push(`"scope.paths[${index}]" must stay in the workspace: relative, without ".." segments`)
+    // The class reads a scope path as a name, never as a pattern: `src/**/*.ts` would name no file, and leave the files it means unclassified.
+    else if (/[*?]/.test(path)) violations.push(`"scope.paths[${index}]" must name files or directories, without the wildcards * and ?`)
   })
   if (violations.length > 0) throw new ToolArgsError(violations)
   return { intent, description, ...(scope === undefined ? {} : { scope }), interactive }
