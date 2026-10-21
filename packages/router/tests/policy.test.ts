@@ -3,8 +3,11 @@
  * format, then the decision it gives a task from the task's routing fields,
  * the class computed for its scope and the user's forcing.
  */
-import { describe, expect, it } from 'vitest'
-import { decide, parsePolicy } from '../src/policy.ts'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { decide, loadPolicy, parsePolicy } from '../src/policy.ts'
 import { POLICY_FILE } from './fixtures/policy.ts'
 
 const POLICY = parsePolicy(POLICY_FILE)
@@ -144,5 +147,37 @@ describe('policy file parsing', () => {
     ['unreadable YAML', 'version: 1\ncouples: [\n', 'invalid YAML'],
   ])('refuses %s', (_label, text, reason) => {
     expect(() => parsePolicy(text)).toThrow(reason)
+  })
+})
+
+describe('policy file loading', () => {
+  const input = { intent: 'refactor', interactive: false, sensitivity: 'C0' } as const
+  let dir: string
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'qrg-policy-'))
+  })
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  it('reads the file at each load, so that an edit applies to the next decision (D-08)', async () => {
+    const path = join(dir, 'policy.yml')
+    await writeFile(path, POLICY_FILE)
+    expect(decide(await loadPolicy(path), input)).toMatchObject({ couple: { model: 'qwen3.8' } })
+    await writeFile(path, POLICY_FILE.replaceAll('qwen3.8', 'qwen-next'))
+    expect(decide(await loadPolicy(path), input)).toMatchObject({ couple: { model: 'qwen-next' } })
+  })
+
+  it('names the file it cannot read', async () => {
+    const path = join(dir, 'absent.yml')
+    await expect(loadPolicy(path)).rejects.toThrow(`the routing policy ${path} is unreadable: ENOENT`)
+  })
+
+  it('names the file it refuses, and why', async () => {
+    const path = join(dir, 'policy.yml')
+    await writeFile(path, POLICY_FILE.replace('fallback: native/qwen3.8', 'fallback: native/mistral'))
+    await expect(loadPolicy(path)).rejects.toThrow(`the routing policy ${path} is invalid: default.fallback: unknown couple`)
   })
 })
