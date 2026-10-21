@@ -62,6 +62,10 @@ describe('TaskDescriptor parsing', () => {
     expect(refusal({ ...TASK, scope: { paths: ['README.md', ''] } })).toEqual([expect.stringContaining('"scope.paths[1]"')])
   })
 
+  it.each(['src/**/*.ts', 'qrg_pilot/*/pseudonymize.py', 'src/export?.ts'])('refuses the pattern %s, which names no file', path => {
+    expect(refusal({ ...TASK, scope: { paths: ['README.md', path] } })).toEqual([expect.stringContaining('"scope.paths[1]"')])
+  })
+
   it('refuses a scope that names a repository', () => {
     expect(refusal({ ...TASK, scope: { ...TASK.scope, repository: 'linagora/other-repo' } })).toEqual([expect.stringContaining('"scope.repository"')])
   })
