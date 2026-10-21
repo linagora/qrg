@@ -47,7 +47,8 @@ const BUILTIN_C3 = [
   '**/.env', '**/.env.local', '**/.env.*.local', '**/*.pem', '**/*.p12', '**/*.pfx', '**/id_rsa', '**/id_ecdsa', '**/id_ed25519', '**/.netrc',
 ].map(source => ({ source, pattern: compilePattern(source) }))
 
-const SensitivityClass = z.enum(['C0', 'C1', 'C2', 'C3'])
+/** The classes as the YAML files of qrg-router name them. */
+export const SensitivityClass = z.enum(['C0', 'C1', 'C2', 'C3'])
 
 /** Sensitivity class, from C0 public to C3 sensitive. */
 export type SensitivityClass = z.infer<typeof SensitivityClass>
