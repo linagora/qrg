@@ -4,6 +4,7 @@
  * couples. At lot 1 its chain stops at the rules, then the fallback.
  * @module @linagora/qrg-router/policy
  */
+import { readFile } from 'node:fs/promises'
 import { z } from 'zod'
 import { SensitivityClass } from './sensitivity.ts'
 import { TASK_PARAMETERS } from './task.ts'
@@ -118,6 +119,27 @@ export function parsePolicy(text: string): Policy {
       when: { sensitivity: list(rule.when?.sensitivity), intent: list(rule.when?.intent), interactive: rule.when?.interactive },
     })),
     fallback,
+  }
+}
+
+/**
+ * Read a policy file for one decision. Read again at each, an edited policy
+ * applies to the next delegation, without a restart (D-08).
+ * @param path - the policy file.
+ * @returns the policy.
+ * @throws Error naming the file, and why it cannot be read or is refused.
+ */
+export async function loadPolicy(path: string): Promise<Policy> {
+  let text: string
+  try {
+    text = await readFile(path, 'utf8')
+  } catch (error) {
+    throw new Error(`the routing policy ${path} is unreadable: ${(error as NodeJS.ErrnoException).code ?? String(error)}`)
+  }
+  try {
+    return parsePolicy(text)
+  } catch (error) {
+    throw new Error(`the routing policy ${path} is invalid: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
