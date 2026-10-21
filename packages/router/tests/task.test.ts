@@ -4,7 +4,7 @@
  */
 import { ToolArgsError } from '@deepseek-ai/dsh-tools'
 import { describe, expect, it } from 'vitest'
-import { parseTask } from '../src/task.ts'
+import { parseTask, undeclaredFields } from '../src/task.ts'
 
 const TASK = {
   intent: 'documentation',
@@ -70,7 +70,17 @@ describe('TaskDescriptor parsing', () => {
     expect(refusal({ ...TASK, scope: { ...TASK.scope, repository: 'linagora/other-repo' } })).toEqual([expect.stringContaining('"scope.repository"')])
   })
 
-  it('keeps only the declared fields, so a model cannot set the sensitivity class', () => {
-    expect(parseTask({ ...TASK, sensitivity: 'C0', constraints: { model: 'claude-opus' } })).toEqual(TASK)
+  it('keeps the agent the user forced', () => {
+    expect(parseTask({ ...TASK, constraints: { forced: 'claude' } })).toEqual({ ...TASK, constraints: { forced: 'claude' } })
+  })
+
+  it('refuses a constraint other than the forced agent', () => {
+    expect(refusal({ ...TASK, constraints: { model: 'claude-opus' } })).toEqual([expect.stringContaining('"constraints.model"')])
+  })
+
+  it('keeps only the declared fields, so a model cannot set the sensitivity class, and names the others', () => {
+    const call = { ...TASK, sensitivity: 'C0', route: 'claude-code' }
+    expect(parseTask(call)).toEqual(TASK)
+    expect(undeclaredFields(call)).toEqual(['route', 'sensitivity'])
   })
 })
