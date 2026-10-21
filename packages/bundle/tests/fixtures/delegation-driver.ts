@@ -7,6 +7,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-agent'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller'
@@ -14,8 +15,8 @@ import type {} from '@deepseek-ai/dsh-cmdline'
 import type {} from '@deepseek-ai/dsh-storage-domain'
 import type {} from '@deepseek-ai/dsh-subagent'
 
-/** One user action in a conversation: a prompt, or a model choice in the picker. */
-export type Step = { prompt: string } | { selectModel: { provider: string, model: string } }
+/** One user action in a conversation: a prompt, a model choice in the picker, or a file written between two prompts. */
+export type Step = { prompt: string } | { selectModel: { provider: string, model: string } } | { writeFile: { path: string, text: string } }
 
 /** Driver settings written by the test overlay. */
 export interface Config {
@@ -72,6 +73,10 @@ async function drive(ctx: Context, conversations: Step[][]): Promise<void> {
     for (const step of steps) {
       if ('selectModel' in step) {
         await ctx.sessionController.selectModel({ sessionId, ...step.selectModel })
+        continue
+      }
+      if ('writeFile' in step) {
+        await writeFile(step.writeFile.path, step.writeFile.text)
         continue
       }
       await ctx.sessionController.prompt({
