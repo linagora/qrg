@@ -126,9 +126,9 @@ Le routage sort du LLM orchestrateur. Un fournisseur de décision (`DecisionProv
 - `description` : la tâche, rédigée pour se suffire, l'agent délégué ne voyant pas la conversation
 - `scope`, facultatif : périmètre estimé, avec `paths`, fichiers ou répertoires relatifs à l'espace de travail, et `language` (décision du 19 octobre 2026) ; absent, il vaut le dépôt entier
 - `interactive` : la tâche demande-t-elle un dialogue avec l'utilisateur
-- `constraints` : budget, latence, modèle imposé par l'utilisateur ; `route_and_delegate` ne le lit pas encore
+- `constraints`, facultatif : ce que l'utilisateur impose à la tâche. Au lot 1, il ne porte que `forced`, l'agent que l'utilisateur force par une mention dans son propre message, sans l'`@` (`claude`, `qwen`) ; budget et latence restent à définir
 
-La classe de sensibilité n'en fait pas partie : le plugin la calcule lui-même (voir plus bas), jamais à partir de ce que dit un modèle.
+La classe de sensibilité n'en fait pas partie : le plugin la calcule lui-même (voir plus bas), jamais à partir de ce que dit un modèle. Un champ que le `TaskDescriptor` ne déclare pas, comme une classe ou une route passée par le modèle de tête, est ignoré, et son nom est inscrit au registre (E-06).
 
 **Sortie (`RoutingDecision`)**
 
@@ -146,6 +146,8 @@ La classe de sensibilité n'en fait pas partie : le plugin la calcule lui-même 
 ```
 
 `agent` vaut `native`, `claude-code` ou `acp:<nom>`. `model` désigne une route de l'AI Gateway pour les agents natifs.
+
+Au lot 1, la décision du `PolicyProvider` (#10) porte le couple retenu (identifiant, agent et modèle), le maillon qui a tranché (`forced`, `rule` ou `fallback`), qui tient lieu de fournisseur tant que seules les règles décident, la règle, le forçage, les couples admis et les règles `allow` appliquées ; une tâche refusée, parce que le couple forcé ou le repli n'est pas admis, donne à la place la raison. `permissionMode`, `interactive`, `skills`, `confidence`, `rationale` et `fallback` viendront avec l'exécution de Claude Code (#18) et le juge (lot 3).
 
 **Trois implémentations, activables par configuration**
 
@@ -183,23 +185,43 @@ Au lot 1, la gateway ne sert que `qwen3.8` parmi ces modèles (relevé du 18 oct
 **Exemple de politique**
 
 ```yaml
-thresholds: { minConfidence: 0.75, minMargin: 0.15 }
+version: 1
+couples:
+  - id: claude-code/claude-opus
+    agent: claude-code
+    model: claude-opus
+    classes: [C0, C1]
+    mention: claude
+  - id: native/qwen3.8
+    agent: native
+    model: qwen3.8
+    classes: [C0, C1, C2, C3]
+    mention: qwen
 rules:
-  - id: sensible-reste-interne
+  - id: sensitive-stays-internal
     when: { sensitivity: [C2, C3] }
-    allow: [native/qwen-local, native/mistral-local, native/deepseek-local]
-  - id: ambigu-vers-grill-me
+    allow: [native/qwen3.8]
+  - id: ambiguous-to-grill-me
     when: { intent: specification, interactive: true }
-    route: { agent: claude-code, model: claude-opus, permissionMode: plan, skills: [grill-me] }
-  - id: taches-mecaniques
+    route: claude-code/claude-opus
+  - id: mechanical-tasks
     when: { intent: [tests, documentation, small-fix] }
-    route: { agent: native, model: qwen-local }
+    route: native/qwen3.8
 default:
-  chain: [judge, external]
-  fallback: { agent: native, model: qwen-local }
+  fallback: native/qwen3.8
 ```
 
-Les règles `allow` filtrent les options avant tout appel au juge ou au moteur externe : ceux-ci ne voient jamais un couple interdit.
+Une règle s'applique quand la tâche remplit toutes ses conditions `when`. La décision part des couples qui admettent la classe de la tâche ; chaque règle `allow` applicable écarte ceux qu'elle ne nomme pas. Un agent forcé passe ensuite avant toute règle s'il reste admis, et sinon la tâche est refusée avec la raison ; à défaut, la première règle `route` applicable dont le couple reste admis tranche, puis le repli s'il reste admis lui aussi, et sinon la tâche est refusée. Les règles `allow` filtrent les options avant tout appel au juge ou au moteur externe : ceux-ci ne voient jamais un couple interdit.
+
+Le `PolicyProvider` de `qrg-router` (ticket #10, 21 octobre 2026) précise ainsi l'esquisse de départ. Le Security Officer n'a pas encore validé ces points.
+
+- **Catalogue.** Les couples forment un catalogue, chacun avec son identifiant, les classes qu'il admet et la mention qui le force ; règles et repli les désignent par leur identifiant. `permissionMode` et `skills`, que l'esquisse plaçait dans la règle `route`, attendent l'exécution de Claude Code (#18).
+- **Plancher.** Le format refuse un couple autre qu'un agent natif qui admet C2 ou C3, un couple qui nomme deux fois une classe, et un repli qui n'admet pas les quatre classes : la première règle non négociable tient même si la politique est mal écrite. Ce plancher est plus strict que le tableau des classes, qui admet pour C2 les modèles sous contrat UE : aucun n'existe au lot 1, et en admettre un demandera de rouvrir ce point. Pour C1, en revanche, l'exclusion des API non contractualisées reste à la charge de qui écrit la politique : le format ne connaît pas le contrat d'un couple.
+- **Repli.** Le repli est un maillon de la chaîne comme les autres : il ne prend la tâche que si la classe et les règles `allow` l'admettent, et sinon la tâche est refusée avec la raison. Le plancher lui fait admettre les quatre classes : seule une règle `allow` qui l'écarte peut le refuser.
+- **Seuils et chaîne.** `thresholds` et `default.chain` arriveront avec le juge et le moteur externe, au lot 3 : au lot 1, la chaîne s'arrête aux règles, puis au repli (D-03). Le format refuse tout champ qu'il ne connaît pas, donc une politique qui les porte déjà.
+- **Forçage.** L'agent forcé arrive par `constraints.forced`, que le modèle de tête remplit d'après le message de l'utilisateur : le plugin ne lit pas ce message. Une injection peut donc faire forcer un couple. Le forçage reste soumis à la classe et aux règles `allow`, et ne peut faire sortir ni une tâche C2 ou C3 ni un couple qu'une règle écarte, mais le registre l'inscrit comme un forçage de l'utilisateur.
+- **Emplacement.** La politique est le fichier `qrg-policy.yml` du répertoire du profil, copié de `packages/bundle/policy.yml` à l'installation, que `qrg-router` relit à chaque délégation (D-08). Le bundle ne donne à la ligne hôte que ce nom : elle le lit dans le répertoire du profil que dsh lui fournit, sans expression `!!js` ; hors d'un profil lancé par dsh, elle refuse un chemin relatif. Un fichier illisible ou invalide fait échouer chaque délégation, avec son chemin et la raison. Les modèles qu'elle nomme ne sont pas comparés à ceux que sert la gateway.
+- **Politique par défaut.** `packages/bundle/policy.yml` reprend l'exemple ci-dessus sans ses règles `route` : jusqu'à l'exécution de Claude Code (#18), toute tâche que l'utilisateur ne force pas va au repli, et `@claude` sur une tâche C0 ou C1 est décidé et inscrit au registre, puis la délégation échoue.
 
 **Règles non négociables, appliquées après toute décision**
 
@@ -211,9 +233,9 @@ Un outil `explain_route` permet à l'utilisateur de demander pourquoi une tâche
 
 ## Composant 2 : délégation et sessions continuables
 
-Le plugin traduit chaque `RoutingDecision` en appel à l'API sous-agents de DSH. Il conserve dans son stockage (`ctx.storageDomain`) un registre qui lie tâche, décision, session enfant et issue, pour pouvoir reprendre et itérer ; le journal de session de DSH n'accepte pas d'événements libres. Le registre garde les champs de routage de la tâche, jamais son texte (décision du 19 octobre 2026).
+Le plugin traduit chaque `RoutingDecision` en appel à l'API sous-agents de DSH. Il conserve dans son stockage (`ctx.storageDomain`) un registre qui lie tâche, décision, session enfant et issue, pour pouvoir reprendre et itérer ; le journal de session de DSH n'accepte pas d'événements libres. Le registre garde les champs de routage de la tâche, jamais son texte (décision du 19 octobre 2026). Il garde aussi, pour chaque délégation, la classe du périmètre et ses preuves, la décision et ce qu'elle a pesé, ou le refus et sa raison, et les noms des champs de l'appel que le `TaskDescriptor` ne déclare pas, jamais leurs valeurs (#10).
 
-Au lot 1, l'enfant natif travaille dans le répertoire courant de l'agent qui délègue, que DSH retient quand la délégation ne fixe pas de `cwd` ; c'est celui de la racine quand elle délègue elle-même. C'est l'hypothèse posée au découpage du ticket #5, sans décision à ce jour ; le worktree par enfant qui écrit relève du lot 2 (L-06 et L-07). Tant que la politique à règles (#10) n'est pas branchée, la décision se réduit à son repli : un agent natif sur `qwen3.8`.
+Au lot 1, l'enfant natif travaille dans le répertoire courant de l'agent qui délègue, que DSH retient quand la délégation ne fixe pas de `cwd` ; c'est celui de la racine quand elle délègue elle-même. C'est l'hypothèse posée au découpage du ticket #5, sans décision à ce jour ; le worktree par enfant qui écrit relève du lot 2 (L-06 et L-07). La classe que jugent les règles est calculée dans ce même répertoire, où l'enfant travaillera. Au lot 1, seuls les agents natifs s'exécutent : une décision vers Claude Code ou un agent ACP est inscrite au registre, puis la délégation échoue, jusqu'à l'exécution de Claude Code (#18).
 
 | Cible | Fournisseur DSH | Choix du modèle | Itérations |
 | --- | --- | --- | --- |
