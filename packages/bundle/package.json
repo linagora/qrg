@@ -12,6 +12,7 @@
   },
   "files": [
     "cordis.patch.yml",
+    "policy.yml",
     "profile.patch.yml"
   ],
   "engines": {

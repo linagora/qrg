@@ -8,10 +8,14 @@
 # installer also copies it into the profile, whose patch layer DSH applies
 # even when it skips this bundle. Only this insert stays out of it, since
 # inserting the same row twice would clash.
+#
+# The host row reads the routing policy at each delegation from the
+# profile's copy of policy.yml, which the installer writes: the row reads a
+# relative policy path from the profile directory.
 
 - insert:
     - id: qrg-router
       name: '@linagora/qrg-router'
       config:
         gateway: linagora
-        fallbackModel: qwen3.8
+        policy: qrg-policy.yml

@@ -56,6 +56,12 @@ describe('the installation procedure', () => {
     expect(manifest.dsh.profile.bundles).toEqual(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@linagora/qrg-bundle'])
   })
 
+  it('gives the profile its own copy of the default routing policy', async () => {
+    await runScript(installScript, home)
+    const copy = await readFile(join(home, 'profiles', 'qrg', 'qrg-policy.yml'), 'utf8')
+    expect(copy).toBe(await readFile(new URL('../policy.yml', import.meta.url), 'utf8'))
+  })
+
   it('leaves a profile that exists untouched', async () => {
     const dir = join(home, 'profiles', 'qrg')
     await runScript(installScript, home)
