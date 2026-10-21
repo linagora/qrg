@@ -27,6 +27,9 @@ export const BUNDLE_DIR = fileURLToPath(new URL('..', import.meta.url))
 /** Entry point of the dsh this checkout pins. */
 export const DSH_BIN = join(dirname(createRequire(import.meta.url).resolve('@deepseek-ai/dsh/package.json')), 'lib', 'bin.js')
 
+/** The routing policy in the profile directory, where cordis.patch.yml points the host row. */
+export const POLICY_FILENAME = 'qrg-policy.yml'
+
 const BIN_NAME = 'qrg-install'
 
 /**
@@ -69,6 +72,8 @@ export async function installProfile(home?: string): Promise<string> {
     await symlink(BUNDLE_DIR, join(fresh, 'node_modules', bundle.name), 'dir')
     // Replaces the empty patch layer of the template.
     await copyFile(join(BUNDLE_DIR, 'profile.patch.yml'), join(fresh, PROFILE_PATCH_FILENAME))
+    // The profile's own copy, which the user edits: the bundle's stays the default.
+    await copyFile(join(BUNDLE_DIR, 'policy.yml'), join(fresh, POLICY_FILENAME))
     try {
       await rename(fresh, dir)
     } catch (error) {

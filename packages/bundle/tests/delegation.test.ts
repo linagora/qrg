@@ -172,13 +172,30 @@ describe('route_and_delegate in the real composition', () => {
     expect(new Set(authorizations)).toEqual(new Set([`Bearer ${GATEWAY_KEY}`]))
   })
 
-  it('records each delegation with its decision, child and outcome, without the task text', () => {
+  it('records each delegation with its class, decision, child and outcome, without the task text', () => {
     const { children, registry } = run.report
     expect(children.map(child => child.stopReason)).toEqual(['error', 'completed'])
-    const decision = { agent: 'native', provider: 'linagora', model: 'qwen3.8' }
+    // Outside a git repository, every scope is C3, which the default policy keeps on the gateway.
+    const sensitivity = { class: 'C3', evidence: expect.objectContaining({ fellBack: true }) }
+    const decision = {
+      agent: 'native',
+      provider: 'linagora',
+      model: 'qwen3.8',
+      couple: 'native/qwen3.8',
+      decidedBy: 'fallback',
+      options: ['native/qwen3.8'],
+      allowRules: ['sensitive-stays-internal'],
+    }
     expect(registry).toEqual([
-      { task: { intent: 'tests', interactive: false }, decision, childSessionId: children[0]?.id, outcome: 'error' },
-      { task: { intent: 'documentation', scope: TASK.scope, interactive: false }, decision, childSessionId: children[1]?.id, outcome: 'completed' },
+      { task: { intent: 'tests', interactive: false }, sensitivity, decision, ignoredFields: [], childSessionId: children[0]?.id, outcome: 'error' },
+      {
+        task: { intent: 'documentation', scope: TASK.scope, interactive: false },
+        sensitivity,
+        decision,
+        ignoredFields: [],
+        childSessionId: children[1]?.id,
+        outcome: 'completed',
+      },
     ])
   })
 })

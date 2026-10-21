@@ -97,6 +97,9 @@ importers:
       '@deepseek-ai/dsh-agent':
         specifier: 0.2.1-alpha.4
         version: 0.2.1-alpha.4(0bc329fa5fee65d08497d9ec4565e441)
+      '@deepseek-ai/dsh-app-boot':
+        specifier: 0.2.1-alpha.4
+        version: 0.2.1-alpha.4(@deepseek-ai/cordis-plugin-group@1.0.5-alpha.2(@deepseek-ai/cordis-plugin-loader@1.0.6-alpha.2)(@deepseek-ai/cordis@4.0.5-alpha.2))(@deepseek-ai/cordis-plugin-include@1.0.10-alpha.2)(@deepseek-ai/cordis-plugin-loader@1.0.6-alpha.2)(@deepseek-ai/cordis@4.0.5-alpha.2)(@deepseek-ai/dsh-home-paths@0.2.1-alpha.4(@deepseek-ai/cordis@4.0.5-alpha.2))(@deepseek-ai/dsh-launch-environment@0.2.1-alpha.4(@deepseek-ai/cordis@4.0.5-alpha.2))
       '@deepseek-ai/dsh-storage-domain':
         specifier: 0.2.1-alpha.4
         version: 0.2.1-alpha.4(@deepseek-ai/cordis@4.0.5-alpha.2)(@deepseek-ai/dsh-storage@0.2.1-alpha.4(@deepseek-ai/cordis@4.0.5-alpha.2))
@@ -106,6 +109,9 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: 0.2.1-alpha.4
         version: 0.2.1-alpha.4(0c1ddd149f8c677528e072e36b7b876c)
+      '@deepseek-ai/dsh-working-directory':
+        specifier: 0.2.1-alpha.4
+        version: 0.2.1-alpha.4(dda4c95ef186388dc8aa33306c631ffd)
 
 packages:
 

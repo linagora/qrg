@@ -1,0 +1,41 @@
+# Routing policy of route_and_delegate, the default one. The installer
+# copies this file into the qrg profile as qrg-policy.yml, the copy the QRG
+# router (qrg-router) reads at each delegation: an edit of that copy applies
+# to the next delegation, without a restart.
+#
+# The router computes the class of a task from the repository's
+# .linagora/sensitivity.yml and the task's scope; no model takes part in it.
+# Each couple names the classes it admits: only native agents, on the
+# LINAGORA gateway, may admit C2 or C3, and the fallback admits every class.
+version: 1
+
+couples:
+  # Runs from #18 on: until then, a task the user forces to it with @claude
+  # is decided and recorded, then fails.
+  - id: claude-code/claude-opus
+    agent: claude-code
+    model: claude-opus
+    classes: [C0, C1]
+    mention: claude
+  - id: native/qwen3.8
+    agent: native
+    model: qwen3.8
+    classes: [C0, C1, C2, C3]
+    mention: qwen
+
+# A rule applies `when` the task meets all its conditions (sensitivity,
+# intent, interactive), and either keeps only the couples it `allow`s, or
+# `route`s the task to a couple. No rule routes yet: until Claude Code runs
+# (#18), a task the user does not force goes to the fallback. Then a rule
+# such as this one can route a task to Claude Code:
+#
+#   - id: ambiguous-to-grill-me
+#     when: { intent: specification, interactive: true }
+#     route: claude-code/claude-opus
+rules:
+  - id: sensitive-stays-internal
+    when: { sensitivity: [C2, C3] }
+    allow: [native/qwen3.8]
+
+default:
+  fallback: native/qwen3.8
